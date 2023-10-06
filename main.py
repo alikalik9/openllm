@@ -11,7 +11,7 @@ from nicegui import Client, ui
 OPENAI_API_KEY = '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'  # TODO: set your OpenAI API key here
 
 memory = ConversationBufferMemory
-llm = ConversationChain(llm=ChatOpenAI(model_name='mistral-7b-instruct', openai_api_key='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', openai_api_base="https://api.perplexity.ai"),memory=ConversationBufferMemory())
+llm = ConversationChain(llm=ChatOpenAI(model_name="codellama-34b-instruct", openai_api_key='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', openai_api_base="https://api.perplexity.ai"),memory=ConversationBufferMemory())
 messages: List[Tuple[str, str]] = []
 thinking: bool = False
 
@@ -47,6 +47,7 @@ async def main(client: Client):
     await client.connected()
 
     with ui.column().classes('w-full max-w-2xl mx-auto items-stretch'):
+        select1 = ui.select(["llama-2-70b-chat", "llama-2-13b-chat", "codellama-34b-instruct","mistral-7b-instruct"], value="mistral-7b-instruct", on_change=lambda e: on_value_change(e.value))
         await chat_messages()
 
     with ui.footer().classes('bg-white'), ui.column().classes('w-full max-w-3xl mx-auto my-6'):
@@ -57,5 +58,5 @@ async def main(client: Client):
                 .classes('w-full self-center').on('keydown.enter', send)
         ui.markdown('simple chat app built with [NiceGUI](https://nicegui.io)') \
             .classes('text-xs self-end mr-8 m-[-1em] text-primary')
-
+  
 ui.run(title='Chat with GPT-3 (example)') 
