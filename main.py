@@ -25,7 +25,7 @@ class ChatApp:
     @ui.refreshable
     async def chat_messages(self) -> None:
         for name, text in self.messages:
-            ui.chat_message(text=text, name=name, sent=name == 'You').props(f"bg-color={('teal' if name == 'You' else 'primary')} text-color=white").classes("rounded-lg")
+            ui.chat_message(text=text, name=name, sent=name == 'You').props(f"bg-color={('teal' if name == 'You' else 'primary')} text-color=white").classes("rounded-lg text-lg")
         if self.thinking:
             ui.spinner("dots",size='3rem')
         await ui.run_javascript('window.scrollTo(0, document.body.scrollHeight)', respond=False)
@@ -66,6 +66,7 @@ class ChatApp:
         folder_path = "chat_history"
         os.makedirs(folder_path, exist_ok=True)
         response = await self.llm.arun("summarize this topic in maximum 5 words")
+        print(response)
         file_path = os.path.join(folder_path, f'{response}.json')
         with open(file_path, 'w') as f:
             json.dump(data, f)
@@ -147,11 +148,13 @@ async def main(client: Client):
         ui.label('Chat to LLM 💬').on("click", lambda: ui.open("/")).classes("cursor-pointer w-full text-black text-base font-semibold md:text-[2rem]")
     
     with ui.left_drawer(bottom_corner=True).style('background-color: #d7e3f4') as drawer:
-        ui.button(icon="add", on_click=handle_new_chat).props("rounded")
-        ui.label("Model").classes("pt-5")
-        select = ui.select(["llama-2-70b-chat", "llama-2-13b-chat", "codellama-34b-instruct", "mistral-7b-instruct"], value="mistral-7b-instruct", on_change=lambda e: chat_app.on_value_change(ename=e.value)).classes("bg-slate-200")
-        ui.label("Temperature").classes("pt-5")
-        slider = ui.slider(min=0, max=2, step=0.1, value=5,on_change=lambda e: chat_app.on_value_change(etemp=e.value)).props("label-always")
+        with ui.column().classes("w-full items-center"):
+            ui.button(icon="add", on_click=handle_new_chat).props("rounded")
+        with ui.expansion("Settings"):
+            ui.label("Model").classes("pt-5")
+            select = ui.select(["llama-2-70b-chat", "llama-2-13b-chat", "codellama-34b-instruct", "mistral-7b-instruct"], value="mistral-7b-instruct", on_change=lambda e: chat_app.on_value_change(ename=e.value)).classes("bg-slate-200")
+            ui.label("Temperature").classes("pt-5")
+            slider = ui.slider(min=0, max=2, step=0.1, value=5,on_change=lambda e: chat_app.on_value_change(etemp=e.value)).props("label-always")
         ui.separator().classes("bg-black")
         ui.label("Tokens Used").classes("pt-3")
         ui.label("0").bind_text_from(chat_app,"tokens_used").classes("pt-1")
