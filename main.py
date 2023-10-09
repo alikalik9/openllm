@@ -1,3 +1,6 @@
+import json
+import os
+from datetime import datetime
 from typing import List, Dict
 from langchain.chains import ConversationChain
 from langchain.chat_models import ChatOpenAI
@@ -6,9 +9,7 @@ from langchain.chains.conversation.memory import ConversationBufferMemory
 from langchain.schema import HumanMessage, AIMessage
 from langchain.memory.chat_memory import ChatMessageHistory
 from nicegui import Client, ui
-import json
-import os
-from datetime import datetime
+
 API_KEY = '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'
 
 class ChatApp:
@@ -18,6 +19,7 @@ class ChatApp:
         self.thinking = False
         self.total_tokens = 0
         self.chatloaded = False
+        self.current_chat_name = ""
 
     def on_value_change(self, ename="mistral-7b-instruct", etemp="1"):
         self.llm = ConversationChain(llm=ChatOpenAI(model_name=ename, temperature=etemp, openai_api_key='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', openai_api_base="https://api.perplexity.ai"))
@@ -62,14 +64,18 @@ class ChatApp:
         return [{'type': type(m).__name__, 'content': m.content} for m in messages]
 
     async def save_to_db(self, data: List[Dict]) -> None:
-        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
         folder_path = "chat_history"
         os.makedirs(folder_path, exist_ok=True)
-        response = await self.llm.arun("summarize this topic in maximum 5 words")
-        print(response)
-        file_path = os.path.join(folder_path, f'{response}.json')
-        with open(file_path, 'w') as f:
-            json.dump(data, f)
+        if self.current_chat_name:
+             file_path = os.path.join(folder_path, f'{self.current_chat_name}')
+             with open(file_path, 'w') as f:
+                json.dump(data, f)
+        else:
+            response = await self.llm.arun("summarize this topic in maximum 5 words")
+            print(response)
+            file_path = os.path.join(folder_path, f'{response}.json')
+            with open(file_path, 'w') as f:
+                json.dump(data, f)
 
     def load_from_db(self, filename: str) -> List[Dict]:
         folder_path = "chat_history"
@@ -89,6 +95,8 @@ class ChatApp:
     async def load_chat_history(self, filename: str) -> None:
         #self.chat_messages.refresh()
         self.thinking = True
+        self.current_chat_name = filename
+        print(self.current_chat_name)
         self.chat_messages.refresh()
         self.llm.memory.clear()
         self.messages.clear()
@@ -100,7 +108,7 @@ class ChatApp:
             response = await self.llm.arun("hi")
             print(response)
         self.messages = [('You', message.content) if isinstance(message, HumanMessage) else ('GPT', message.content) for message in retrieved_messages]
-        self.chatloaded = True
+        #self.chatloaded = True
         self.thinking = False
         self.chat_messages.refresh()
 
