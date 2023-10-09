@@ -31,6 +31,22 @@ class ChatApp:
         if self.thinking:
             ui.spinner("dots",size='3rem')
         await ui.run_javascript('window.scrollTo(0, document.body.scrollHeight)', respond=False)
+    
+    @ui.refreshable
+    def chat_history_grid(self): #function for the table with the chat history
+        current_directory = os.getcwd()
+        json_directory = os.path.join(current_directory, 'chat_history')   
+        json_filenames = [f for f in os.listdir(json_directory) if f.endswith('.json')] #list all json files in directory
+        rowData = [{'filename': filename} for filename in json_filenames]
+        grid = ui.aggrid({
+    'defaultColDef': {'flex': 1},
+    'columnDefs': [
+        {'headerName': 'Chats', 'field': 'filename'},
+    ],
+    'rowData': rowData,
+    'rowSelection': 'multiple',
+}, theme="material").classes('md:h-1/2 max-h-200 pt-4').on("cellClicked", lambda event:  self.load_chat_history(event.args["value"]))
+
 
     async def send(self, text) -> None:
         message = text.value
@@ -43,21 +59,16 @@ class ChatApp:
         self.tokens_used = cb.total_tokens  # get the total tokens used
         print(self.tokens_used)
         self.messages.append(('GPT', response))
-        self.chat_history = self.llm.memory.chat_memory.messages
+        await self.save_to_db(self.messages_to_dict(self.llm.memory.chat_memory.messages))# Save the chat history to the database
+        self.chat_history_grid.refresh()
         self.thinking = False
         self.chat_messages.refresh()
 
     async def clear(self):
-        if  self.chatloaded == False:
-            await self.save_to_db(self.messages_to_dict(self.chat_history))# Save the chat history to the database
-            self.llm.memory.clear()
-            self.messages.clear()
-            self.chat_messages.refresh()
-        else:
-            self.llm.memory.clear()
-            self.messages.clear()
-            self.chatloaded = False
-            self.chat_messages.refresh()
+        self.llm.memory.clear()
+        self.messages.clear()
+        self.chat_messages.refresh()
+        
 
 
     def messages_to_dict(self, messages: List) -> List[Dict]:
@@ -93,11 +104,9 @@ class ChatApp:
         return messages
 
     async def load_chat_history(self, filename: str) -> None:
-        #self.chat_messages.refresh()
         self.thinking = True
-        self.current_chat_name = filename
-        print(self.current_chat_name)
         self.chat_messages.refresh()
+        self.current_chat_name = filename
         self.llm.memory.clear()
         self.messages.clear()
         retrieved_messages = self.messages_from_dict(self.load_from_db(filename))
@@ -123,29 +132,12 @@ chat_app = ChatApp()
 async def main(client: Client):
     async def send() -> None:
         await chat_app.send(text)
-    
-    def get_json_filenames(directory):
-        return [f for f in os.listdir(directory) if f.endswith('.json')]
 
     async def handle_new_chat():
         await chat_app.clear()
-        chat_history_grid.refresh()
+        chat_app.chat_history_grid.refresh()
     
-    @ui.refreshable
-    def chat_history_grid(): #function for the table with the chat history
-        current_directory = os.getcwd()
-        json_directory = os.path.join(current_directory, 'chat_history')   
-        json_filenames = get_json_filenames(json_directory)
-        rowData = [{'filename': filename} for filename in json_filenames]
-        grid = ui.aggrid({
-    'defaultColDef': {'flex': 1},
-    'columnDefs': [
-        {'headerName': 'Chats', 'field': 'filename'},
-    ],
-    'rowData': rowData,
-    'rowSelection': 'multiple',
-}, theme="material").classes('md:h-1/2 max-h-200 pt-4').on("cellClicked", lambda event:  chat_app.load_chat_history(event.args["value"]))
-
+    
     
     
     await client.connected()
@@ -166,7 +158,7 @@ async def main(client: Client):
         ui.separator().classes("bg-black")
         ui.label("Tokens Used").classes("pt-3")
         ui.label("0").bind_text_from(chat_app,"tokens_used").classes("pt-1")
-        chat_history_grid()
+        chat_app.chat_history_grid()
         
 
     with ui.column().classes('w-full items-stretch'):
