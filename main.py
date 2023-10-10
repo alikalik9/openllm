@@ -67,6 +67,7 @@ class ChatApp:
     async def clear(self):
         self.llm.memory.clear()
         self.messages.clear()
+        self.current_chat_name=""
         self.chat_messages.refresh()
         
 
@@ -162,6 +163,9 @@ async def main(client: Client):
         
 
     with ui.column().classes('w-full items-stretch'):
+        with ui.row().classes("items-center justify-center bg-slate-100"):
+            ui.label("").bind_text_from(chat_app,"current_chat_name")
+            ui.icon("delete", size="40px").bind_visibility_from(chat_app,"current_chat_name").on("click",ui.notify("hi"))
         await chat_app.chat_messages()
 
 
