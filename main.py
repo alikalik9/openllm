@@ -13,13 +13,16 @@ from nicegui import Client, ui
 API_KEY = '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'
 
 class ChatApp:
+    """
+    Initializes the ChatApp class.The class contains all the methods to send messages to the llm, get the response and also save the chat history in a json format.
+    It also contains some ui.parts, the ui.chat_message for displaying the chat conversation and an aggrid for displaying the chat history
+    """
     def __init__(self):
         self.llm = ConversationChain(llm=ChatOpenAI(model_name="mistral-7b-instruct", openai_api_key='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', openai_api_base="https://api.perplexity.ai", temperature="0.1"), memory=ConversationBufferMemory())
-        self.messages = []
-        self.thinking = False
-        self.total_tokens = 0
-        self.chatloaded = False
-        self.current_chat_name = ""
+        self.messages = [] # var that will contain an conversation
+        self.thinking = False #var for showing the spinner 
+        self.total_tokens = 0 # var for counting the tokens
+        self.current_chat_name = "" #name for the currently selected chat. will be filled when someone clicks on a chat in the aggrid
 
     def on_value_change(self, ename="mistral-7b-instruct", etemp="1"):
         """
@@ -60,6 +63,35 @@ class ChatApp:
     'rowData': rowData,
     'rowSelection': 'multiple',
 }, theme="material").classes('md:h-1/2 max-h-200 pt-4').on("cellClicked", lambda event:  self.load_chat_history(event.args["value"]))
+        rows = [{'filename': filename} for filename in json_filenames]
+
+        columns = [
+            {'name': 'Chats', 'key': 'filename'}
+        ]
+
+        table = ui.table(title="Chats", columns=columns, rows=rows, row_key='filename').classes('md:h-1/2 max-h-200 pt-4')
+
+        table.add_slot('body', r'''
+    <q-tr :props="props">
+        <q-td
+            v-for="col in props.cols"
+            :key="col.name"
+            :props="props"
+            @click="$parent.$emit('cell-click', {row: props.row, col: col.name})"
+        >
+            <div style="text-align: left; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ props.row[col.key] }}</div>
+            <q-btn flat dense size="sm" color="red" label="Delete" @click.stop="$parent.$emit('cell-clickk', {row: props.row, col: col.name})"></q-btn>
+        </q-td>
+    </q-tr>
+''')
+        table.on('cell-click', lambda msg: ui.notify(f'{msg["args"]["row"]["filename"]}'))
+        table.on('cell-clickk', lambda msg: ui.notify(f'{msg["args"]["row"]["filename"]}'))
+
+
+    
+
+
+
 
     async def send(self, text) -> None:
         """
@@ -109,6 +141,13 @@ class ChatApp:
         return [{'type': type(m).__name__, 'content': m.content} for m in messages]
 
     async def save_to_db(self, data: List[Dict]) -> None:
+        """
+        Saves the chat history to the database. It checks if the current chat is already in the directory (thorugh self.current_chat_name) and if yes just updates the json file. if the chat is not in the directory
+        a new json file is created. a call to the llm done before to sum the chat in 5 words and this becomde the filename fpr the json file.
+
+        Parameters:
+        data (List[Dict]): The chat history to be saved.
+        """
         folder_path = "chat_history"
         os.makedirs(folder_path, exist_ok=True)
         if self.current_chat_name:
@@ -123,12 +162,30 @@ class ChatApp:
                 json.dump(data, f)
 
     def load_from_db(self, filename: str) -> List[Dict]:
+        """
+        Loads the chat history from the database. Helper function to get the content of the json
+
+        Parameters:
+        filename (str): The name of the file to be loaded.
+
+        Returns:
+        List[Dict]: The loaded chat history.
+        """
         folder_path = "chat_history"
         file_path = os.path.join(folder_path, f'{filename}')
         with open(file_path, 'r') as f:
             return json.load(f)
 
     def messages_from_dict(self, data: List[Dict]) -> List:
+        """
+        Converts the dictionary representation of messages to the actual messages.
+
+        Parameters:
+        data (List[Dict]): The dictionary representation of the messages.
+
+        Returns:
+        List: The actual messages.
+        """
         messages = []
         for m in data:
             if m['type'] == 'HumanMessage':
@@ -138,6 +195,12 @@ class ChatApp:
         return messages
 
     async def load_chat_history(self, filename: str) -> None:
+        """
+        Loads the chat history. Gets the content of the selected json file and passes it as a langchain history object to the llm
+
+        Parameters:
+        filename (str): The name of the file to be loaded.
+        """
         self.thinking = True
         self.chat_messages.refresh()
         self.current_chat_name = filename
@@ -152,7 +215,6 @@ class ChatApp:
             print(response)
         self.tokens_used = cb.total_tokens
         self.messages = [('You', message.content) if isinstance(message, HumanMessage) else ('GPT', message.content) for message in retrieved_messages]
-        #self.chatloaded = True
         self.thinking = False
         self.chat_messages.refresh()
 
@@ -199,7 +261,8 @@ async def main(client: Client):
             ui.label("").bind_text_from(chat_app,"current_chat_name")
             ui.button("", icon="delete", on_click=lambda e: ui.notify("hi")).bind_visibility_from(chat_app,"current_chat_name").props("rounded").classes("bg-red")
         chat_app.chat_history_grid()
-        
+
+                
 
     with ui.column().classes('w-full items-stretch'):
         await chat_app.chat_messages()
