@@ -68,9 +68,11 @@ class ChatApp:
         columns = [
             {'name': 'Chats', 'key': 'filename'}
         ]
+        table = ui.table(title="Chats", columns=columns, rows=rows, row_key='filename').style("max-height:400")
 
-        table = ui.table(title="Chats", columns=columns, rows=rows, row_key='filename').classes('md:h-1/2 max-h-200 pt-4')
+        
 
+        # format table: text-left, max-width, overflow hidden; create onclick listeter for cell clicks, add delete button
         table.add_slot('body', r'''
     <q-tr :props="props">
         <q-td
@@ -79,7 +81,7 @@ class ChatApp:
             :props="props"
             @click="$parent.$emit('cell-click', {row: props.row, col: col.name})"
         >
-            <div style="text-align: left; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ props.row[col.key] }}</div>
+            <div style="text-align: left; max-width: 200px;  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ props.row[col.key] }}</div>
             <q-btn flat dense size="sm" color="red" label="Delete" @click.stop="$parent.$emit('cell-clickk', {row: props.row, col: col.name})"></q-btn>
         </q-td>
     </q-tr>
