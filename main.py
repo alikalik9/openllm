@@ -54,10 +54,8 @@ class ChatApp:
         current_directory = os.getcwd()
         json_directory = os.path.join(current_directory, 'chat_history')   
         json_filenames = [f for f in os.listdir(json_directory) if f.endswith('.json')] #list all json files in directory
-        rowData = [{'filename': filename} for filename in json_filenames]
-
-        with ui.column().classes("h-1/2 overflow-scroll bg-white cursor-pointer"):
-            with ui.element('q-list').props('bordered separator'):
+        with ui.column().classes("h-1/2 overflow-y-scroll bg-white cursor-pointer"):
+            with ui.element('q-list').props('bordered separator').classes("overflow-y-scroll"):
                 for filename in json_filenames:
                     with ui.element('q-item').classes("pt-2"): #chatlist
                         with ui.element('q-item-section'): #name of the chat
@@ -220,7 +218,7 @@ chat_app = ChatApp()
 async def main(client: Client):
     async def send() -> None:
         message = textarea.value
-        textarea.value = ""
+        textarea.value=""
         await chat_app.send(message)
 
     async def handle_new_chat():
@@ -239,20 +237,25 @@ async def main(client: Client):
     
     with ui.left_drawer(bottom_corner=True).style('background-color: #b3cde0') as drawer:
         with ui.column().classes("w-full items-center"):
-            ui.button(icon="add", on_click=handle_new_chat).props("rounded")
+            ui.button(icon="add", on_click=handle_new_chat, color="slate-400").props("rounded")
         with ui.expansion("Settings"):
             ui.label("Model").classes("pt-5")
             select = ui.select(["llama-2-70b-chat", "llama-2-13b-chat", "codellama-34b-instruct", "mistral-7b-instruct"], value="mistral-7b-instruct", on_change=lambda e: chat_app.on_value_change(ename=e.value)).classes("bg-slate-200")
             ui.label("Temperature").classes("pt-5")
-            slider = ui.slider(min=0, max=2, step=0.1, value=5,on_change=lambda e: chat_app.on_value_change(etemp=e.value)).props("label-always")
-        ui.label("Tokens Used").classes("pt-3")
-        ui.label("0").bind_text_from(chat_app,"tokens_used").classes("pt-1")
-        ui.label("Chat").classes("pt-4 pb-2")
+            slider = ui.slider(min=0, max=2, step=0.1, value=0.1,on_change=lambda e: chat_app.on_value_change(etemp=e.value)).props("label-always")
+        ui.label("Chat History").classes("pt-4 pb-2 text-xl")
         chat_app.chat_history_grid()
+        with ui.row().classes("w-full no-wrap justify-center pt-5"):
+            ui.label("Tokens Used:")
+            ui.label("").bind_text_from(chat_app,"tokens_used").classes("pb-2")
+        
 
                 
 
-    with ui.column().classes('w-full items-stretch'):
+    with ui.column().classes('w-full items-stretch items-center justiy-center'):
+        with ui.row().classes("w-full items-center justiy-center no-wrap bg-slate-200 gap-0 justify-center"):
+            ui.label("").bind_text_from(chat_app,"current_chat_name")
+                
         await chat_app.chat_messages()
 
 
@@ -260,7 +263,7 @@ async def main(client: Client):
         with ui.row().classes('w-full no-wrap items-center'):
             placeholder = 'message' if API_KEY != 'not-set' else \
                 'Please provide your OPENAI key in the Python script first!'
-            textarea = ui.textarea(placeholder=placeholder).props('rounded outlined input-class=mx-3') \
+            textarea = ui.input(placeholder=placeholder).props('rounded outlined input-class=mx-3') \
                 .classes('w-full self-center').on('keydown.enter', send)
         ui.markdown('simple chat app built with [NiceGUI](https://nicegui.io)') \
             .classes('text-xs self-end mr-8 m-[-1em] text-primary')
