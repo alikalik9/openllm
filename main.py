@@ -24,7 +24,7 @@ class ChatApp:
         self.total_tokens = 0 # var for counting the tokens
         self.current_chat_name = "" #name for the currently selected chat. will be filled when someone clicks on a chat in the aggrid
 
-    def on_value_change(self, ename="mistral-7b-instruct", etemp="1"):
+    def on_value_change(self, ename="mistral-7b-instruct", etemp="0.3"):
         """
         Changes the value of the model and temperature for the ConversationChain.
 
@@ -55,43 +55,24 @@ class ChatApp:
         json_directory = os.path.join(current_directory, 'chat_history')   
         json_filenames = [f for f in os.listdir(json_directory) if f.endswith('.json')] #list all json files in directory
         rowData = [{'filename': filename} for filename in json_filenames]
-        grid = ui.aggrid({
-    'defaultColDef': {'flex': 1},
-    'columnDefs': [
-        {'headerName': 'Chats', 'field': 'filename'},
-    ],
-    'rowData': rowData,
-    'rowSelection': 'multiple',
-}, theme="material").classes('md:h-1/2 max-h-200 pt-4').on("cellClicked", lambda event:  self.load_chat_history(event.args["value"]))
-        rows = [{'filename': filename} for filename in json_filenames]
 
-        columns = [
-            {'name': 'Chats', 'key': 'filename'}
-        ]
-        table = ui.table(title="Chats", columns=columns, rows=rows, row_key='filename').style("max-height:400")
+        with ui.column().classes("h-1/2 overflow-scroll bg-white cursor-pointer"):
+            with ui.element('q-list').props('bordered separator'):
+                for filename in json_filenames:
+                    with ui.element('q-item').classes("pt-2"): #chatlist
+                        with ui.element('q-item-section'): #name of the chat
+                            ui.label(filename).on("click", lambda filename=filename: self.load_chat_history(filename))
+                        with ui.element('q-item-section').props('side'): #delete button and opening the dialog
+                            with ui.dialog() as dialog, ui.card():
+                                ui.label('Are you sure you want to delete the chat?')
+                                with ui.row():
+                                    ui.button('Yes', on_click=lambda filename=filename: self.delete_chat(filename)).classes("bg-red")
+                                    ui.button('No', on_click=dialog.close)
+                            ui.icon('delete',color="red").on("click", dialog.open)
+                        with ui.element('q-item-section').props('side'):
+                            ui.icon("edit")
 
-        
-
-        # format table: text-left, max-width, overflow hidden; create onclick listeter for cell clicks, add delete button
-        table.add_slot('body', r'''
-    <q-tr :props="props">
-        <q-td
-            v-for="col in props.cols"
-            :key="col.name"
-            :props="props"
-            @click="$parent.$emit('cell-click', {row: props.row, col: col.name})"
-        >
-            <div style="text-align: left; max-width: 200px;  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ props.row[col.key] }}</div>
-            <q-btn flat dense size="sm" color="red" label="Delete" @click.stop="$parent.$emit('cell-clickk', {row: props.row, col: col.name})"></q-btn>
-        </q-td>
-    </q-tr>
-''')
-        table.on('cell-click', lambda msg: ui.notify(f'{msg["args"]["row"]["filename"]}'))
-        table.on('cell-clickk', lambda msg: ui.notify(f'{msg["args"]["row"]["filename"]}'))
-
-
-    
-
+       
 
 
 
@@ -103,13 +84,12 @@ class ChatApp:
         Parameters:
         text (str): The message to be sent. Text beeing given from the ui.input
         """
-        message = text.value
-        self.messages.append(('You', text.value))
         self.thinking = True
-        text.value = ''
+        #message = text.value
+        self.messages.append(('You', text))
         self.chat_messages.refresh()
         with get_openai_callback() as cb:
-            response = await self.llm.arun(message)
+            response = await self.llm.arun(text)
         self.tokens_used = cb.total_tokens  # get the total tokens used
         print(self.tokens_used)
         self.messages.append(('GPT', response))
@@ -157,7 +137,7 @@ class ChatApp:
              with open(file_path, 'w') as f:
                 json.dump(data, f)
         else:
-            response = await self.llm.arun("summarize this topic in maximum 5 words")
+            response = await self.llm.arun("summarize the request in not more than 5 words.")
             print(response)
             file_path = os.path.join(folder_path, f'{response}.json')
             with open(file_path, 'w') as f:
@@ -196,6 +176,15 @@ class ChatApp:
                 messages.append(AIMessage(content=m['content']))
         return messages
 
+    async def delete_chat(self,filename):
+        current_directory = os.getcwd()
+        json_directory = os.path.join(current_directory, 'chat_history')
+        file_path = os.path.join(json_directory,filename)
+        os.remove(file_path)
+        self.chat_history_grid.refresh()
+
+
+
     async def load_chat_history(self, filename: str) -> None:
         """
         Loads the chat history. Gets the content of the selected json file and passes it as a langchain history object to the llm
@@ -230,7 +219,9 @@ chat_app = ChatApp()
 @ui.page('/')
 async def main(client: Client):
     async def send() -> None:
-        await chat_app.send(text)
+        message = textarea.value
+        textarea.value = ""
+        await chat_app.send(message)
 
     async def handle_new_chat():
         await chat_app.clear()
@@ -246,7 +237,7 @@ async def main(client: Client):
         ui.button(on_click=lambda: drawer.toggle(), icon='menu').props('flat color=black')
         ui.label('Chat to LLM 💬').on("click", lambda: ui.open("/")).classes("cursor-pointer w-full text-black text-base font-semibold md:text-[2rem]")
     
-    with ui.left_drawer(bottom_corner=True).style('background-color: #d7e3f4') as drawer:
+    with ui.left_drawer(bottom_corner=True).style('background-color: #b3cde0') as drawer:
         with ui.column().classes("w-full items-center"):
             ui.button(icon="add", on_click=handle_new_chat).props("rounded")
         with ui.expansion("Settings"):
@@ -254,14 +245,9 @@ async def main(client: Client):
             select = ui.select(["llama-2-70b-chat", "llama-2-13b-chat", "codellama-34b-instruct", "mistral-7b-instruct"], value="mistral-7b-instruct", on_change=lambda e: chat_app.on_value_change(ename=e.value)).classes("bg-slate-200")
             ui.label("Temperature").classes("pt-5")
             slider = ui.slider(min=0, max=2, step=0.1, value=5,on_change=lambda e: chat_app.on_value_change(etemp=e.value)).props("label-always")
-        ui.separator().classes("bg-black")
         ui.label("Tokens Used").classes("pt-3")
         ui.label("0").bind_text_from(chat_app,"tokens_used").classes("pt-1")
-        ui.separator().classes("bg-black")
-        ui.label("Current Chat").classes("pt-4")
-        with ui.row().classes("items-center justify-center bg-slate-100 no-wrap"):
-            ui.label("").bind_text_from(chat_app,"current_chat_name")
-            ui.button("", icon="delete", on_click=lambda e: ui.notify("hi")).bind_visibility_from(chat_app,"current_chat_name").props("rounded").classes("bg-red")
+        ui.label("Chat").classes("pt-4 pb-2")
         chat_app.chat_history_grid()
 
                 
@@ -274,7 +260,7 @@ async def main(client: Client):
         with ui.row().classes('w-full no-wrap items-center'):
             placeholder = 'message' if API_KEY != 'not-set' else \
                 'Please provide your OPENAI key in the Python script first!'
-            text = ui.textarea(placeholder=placeholder).props('rounded outlined input-class=mx-3') \
+            textarea = ui.textarea(placeholder=placeholder).props('rounded outlined input-class=mx-3') \
                 .classes('w-full self-center').on('keydown.enter', send)
         ui.markdown('simple chat app built with [NiceGUI](https://nicegui.io)') \
             .classes('text-xs self-end mr-8 m-[-1em] text-primary')
