@@ -1,32 +1,28 @@
-## OpenLLM
+# OpenLLM: Chat with Various LLM Models
 
-OpenLLM is a project that enables chatting with various LLM models. It uses the [Perplexity API](https://blog.perplexity.ai/blog/introducing-pplx-api), which provides access to some of the most well-known open-source models, such as the LLAMA models or Mistral 7B. Additionally, the OpenAI API is used to communicate with the well-known GPT models from OpenAI.
+OpenLLM is a versatile project that allows users to interact with different language models (LLMs). It leverages the [Perplexity API](https://blog.perplexity.ai/blog/introducing-pplx-api) for access to well-known open-source models like the LLAMA models or Mistral 7B. Additionally, OpenAI's API is used to communicate with GPT models.
 
-### Demo
+## Features
 
+- **Intuitive Chat Interface**: Users can seamlessly chat with various LLMs.
+- **Chat History**: Basic chat history is stored locally in JSON files.
+- **Token Counter**: Keep track of tokens used during interactions.
 
+## Future Enhancements
 
-### Features
+- **Robust Error Handling**: Improve error handling for a smoother experience.
+- **Embeddings**: Explore embedding techniques for richer context.
+- **Optimizations**: Minor improvements and optimizations.
 
-- Intuitive chat interface
-- Integration of various LLMs
-- Seamless transition between LLMs! Write in a chat with different models
-- Basic chat history, which is stored locally in JSON files
-- Token counter
+## Technical Details
 
-### ToDos and future features
+OpenLLM relies on two Python libraries:
+- [nicegui](https://nicegui.io/): Used for the user interface.
+- [Langchain](https://www.langchain.com/): Facilitates communication with LLMs.
 
-- Robust error handling
-- Embeddings
-- Minor improvements and optimizations
+## Installation
 
-### Technical basis
-
-The project is mainly based on two Python libraries. The awesome [nicegui](https://nicegui.io/) package was used for the UI. [Langchain](https://www.langchain.com/) was used for communication with the LLMs.
-
-### Installation
-
-1. Clone the repo
-2. Install requirements.txt
-3. Store API keys for OpenAI and Perplexity
-4. Run main.py
+1. Clone the repository.
+2. Install dependencies from `requirements.txt`.
+3. Store API keys for OpenAI and Perplexity.
+4. Run `main.py`.
