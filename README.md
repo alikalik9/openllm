@@ -11,7 +11,7 @@ OpenLLM is a versatile project that allows users to interact with different lang
 ## Demo
 
 
-https://github.com/alikalik9/openllm/assets/126254607/51894338-2b32-40bc-8c57-5f3e0e82ba94
+https://github.com/alikalik9/openllm/assets/126254607/d7d48784-094f-4a31-9350-49e0440f9e31
 
 
 
@@ -33,5 +33,3 @@ OpenLLM relies on two Python libraries:
 2. Install dependencies from `requirements.txt`.
 3. Store API keys for OpenAI and Perplexity.
 4. Run `main.py`.
-
-Feel free to review and enhance this markdown-formatted text! 😊.
