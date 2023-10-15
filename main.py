@@ -50,13 +50,27 @@ class ChatApp:
         """
         Creates a grid for the chat history. Uses the aggrid. When clicking on a chat the load_chat_history function is invoked to load chat from json
         """
-
         current_directory = os.getcwd()
         json_directory = os.path.join(current_directory, 'chat_history')   
         json_filenames = [f for f in os.listdir(json_directory) if f.endswith('.json')] #list all json files in directory
+
+        # Create a list of tuples, each containing a filename and its corresponding timestamp
+        timestamps_and_filenames = []
+        for filename in json_filenames:
+            with open(os.path.join(json_directory, filename), 'r') as f:
+                data = json.load(f)
+                timestamp = data['timestamp']
+                timestamps_and_filenames.append((timestamp, filename))
+
+        # Sort the list of tuples by the timestamp (in descending order)
+        timestamps_and_filenames.sort(reverse=True)
+
+        # Extract the sorted filenames
+        sorted_filenames = [filename for timestamp, filename in timestamps_and_filenames]
+
         with ui.column().classes("h-1/2 overflow-y-scroll bg-white cursor-pointer"):
             with ui.element('q-list').props('bordered separator').classes("overflow-y-scroll"):
-                for filename in json_filenames:
+                for filename in sorted_filenames:
                     with ui.element('q-item').classes("pt-2"): #chatlist
                         with ui.element('q-item-section'): #name of the chat
                             ui.label(filename).on("click", lambda filename=filename: self.load_chat_history(filename))
@@ -130,16 +144,19 @@ class ChatApp:
         """
         folder_path = "chat_history"
         os.makedirs(folder_path, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        data_with_timestamp = {"timestamp": timestamp, "messages": data}
         if self.current_chat_name:
              file_path = os.path.join(folder_path, f'{self.current_chat_name}')
              with open(file_path, 'w') as f:
-                json.dump(data, f)
+                json.dump(data_with_timestamp, f)
         else:
             response = await self.llm.arun("summarize the request in not more than 5 words.")
             print(response)
             file_path = os.path.join(folder_path, f'{response}.json')
             with open(file_path, 'w') as f:
-                json.dump(data, f)
+                json.dump(data_with_timestamp, f)
+            self.current_chat_name = f'{response}.json'
 
     def load_from_db(self, filename: str) -> List[Dict]:
         """
@@ -154,7 +171,8 @@ class ChatApp:
         folder_path = "chat_history"
         file_path = os.path.join(folder_path, f'{filename}')
         with open(file_path, 'r') as f:
-            return json.load(f)
+            data_with_timestamp=json.load(f)
+        return data_with_timestamp["messages"]
 
     def messages_from_dict(self, data: List[Dict]) -> List:
         """
@@ -179,6 +197,7 @@ class ChatApp:
         json_directory = os.path.join(current_directory, 'chat_history')
         file_path = os.path.join(json_directory,filename)
         os.remove(file_path)
+        await self.clear()
         self.chat_history_grid.refresh()
 
 
@@ -231,10 +250,11 @@ async def main(client: Client):
     await client.connected()
  
 
-    with ui.header(fixed=False).classes('items-center p-0 px-1 h-[6vh] no-wrap gap-0').style('box-shadow: 0 2px 4px').classes('bg-slate-100'):
+    with ui.header(fixed=True).classes('items-center p-0 px-1 h-[6vh] no-wrap gap-0').style('box-shadow: 0 2px 4px').classes('bg-slate-100'):
         ui.button(on_click=lambda: drawer.toggle(), icon='menu').props('flat color=black')
-        ui.label('Chat to LLM 💬').on("click", lambda: ui.open("/")).classes("cursor-pointer w-full text-black text-base font-semibold md:text-[2rem]")
-    
+        ui.label('Chat to LLM 💬').on("click", lambda: ui.open("/")).classes("cursor-pointer text-black  w-1/3 text-base font-semibold md:text-[2rem]")
+        with ui.row().classes("w-full no-wrap gap-0"):
+            ui.label("").bind_text_from(chat_app,"current_chat_name").classes("text-black overflow-hidden w-full")
     with ui.left_drawer(bottom_corner=True).style('background-color: #b3cde0') as drawer:
         with ui.column().classes("w-full items-center"):
             ui.button(icon="add", on_click=handle_new_chat, color="slate-400").props("rounded")
@@ -251,11 +271,7 @@ async def main(client: Client):
         
 
                 
-
-    with ui.column().classes('w-full items-stretch items-center justiy-center'):
-        with ui.row().classes("w-full items-center justiy-center no-wrap bg-slate-200 gap-0 justify-center"):
-            ui.label("").bind_text_from(chat_app,"current_chat_name")
-                
+    with ui.column().classes('w-full items-stretch items-center justiy-center'):     
         await chat_app.chat_messages()
 
 
@@ -270,4 +286,4 @@ async def main(client: Client):
 
 
 
-ui.run(title='Chat with GPT-3 (example)', on_air="A2DCqSNCZ6Zbxv00")
+ui.run(title='Chat with GPT-3 (example)')
