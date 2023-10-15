@@ -8,6 +8,13 @@ OpenLLM is a versatile project that allows users to interact with different lang
 - **Chat History**: Basic chat history is stored locally in JSON files.
 - **Token Counter**: Keep track of tokens used during interactions.
 
+## Demo
+
+
+https://github.com/alikalik9/openllm/assets/126254607/d7d48784-094f-4a31-9350-49e0440f9e31
+
+
+
 ## Future Enhancements
 
 - **Robust Error Handling**: Improve error handling for a smoother experience.
