@@ -24,7 +24,7 @@ https://github.com/alikalik9/openllm/assets/126254607/d7d48784-094f-4a31-9350-49
 ## Technical Details
 
 OpenLLM relies on two Python libraries:
-- [NiceGUI](https://nicegui.io/): This awesome library is used for the user interface.
+- [nicegui](https://nicegui.io/): Used for the user interface.
 - [Langchain](https://www.langchain.com/): Facilitates communication with LLMs.
 
 ## Installation
