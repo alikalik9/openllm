@@ -5,6 +5,11 @@ OpenLLM is a project that enables chatting with various LLM models. It uses the 
 ### Demo
 
 
+https://github.com/alikalik9/openllm/assets/126254607/72760663-b583-4a84-ba11-a49741b3008f
+
+
+
+
 
 ### Features
 
