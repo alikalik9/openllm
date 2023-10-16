@@ -8,9 +8,12 @@ from langchain.callbacks import get_openai_callback
 from langchain.chains.conversation.memory import ConversationBufferMemory
 from langchain.schema import HumanMessage, AIMessage
 from langchain.memory.chat_memory import ChatMessageHistory
-from nicegui import Client, ui
+from nicegui import Client, ui, events
+from embeddings import Embedding
 
-API_KEY = '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'
+API_KEY = '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'
+OPEN_API_KEY = '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'
+PPL_BASE = 'https://api.perplexity.ai'
 
 class ChatApp:
     """
@@ -21,8 +24,10 @@ class ChatApp:
         self.llm = ConversationChain(llm=ChatOpenAI(model_name="mistral-7b-instruct", openai_api_key='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', openai_api_base="https://api.perplexity.ai", temperature="0.1"), memory=ConversationBufferMemory())
         self.messages = [] # var that will contain an conversation
         self.thinking = False #var for showing the spinner 
-        self.total_tokens = 0 # var for counting the tokens
+        self.tokens_used = 0 # var for counting the tokens
+        self.total_cost = 0 #var for cost in usd
         self.current_chat_name = "" #name for the currently selected chat. will be filled when someone clicks on a chat in the aggrid
+        self.api_key = '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'
 
     def on_value_change(self, ename="mistral-7b-instruct", etemp="0.3"):
         """
@@ -32,7 +37,15 @@ class ChatApp:
         ename (str): The name of the model.
         etemp (str): The temperature for the model.
         """
-        self.llm = ConversationChain(llm=ChatOpenAI(model_name=ename, temperature=etemp, openai_api_key='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', openai_api_base="https://api.perplexity.ai"))
+        perplexity_models = ["llama-2-70b-chat", "llama-2-13b-chat", "codellama-34b-instruct", "mistral-7b-instruct"]
+        openai_models = ["gpt-3.5-turbo"]
+        if ename in perplexity_models:
+            print(ename)
+            self.llm = ConversationChain(llm=ChatOpenAI(model_name=ename, openai_api_key=API_KEY, openai_api_base="https://api.perplexity.ai", temperature=etemp), memory=ConversationBufferMemory())
+        else:
+            print(ename)
+            self.llm = ConversationChain(llm=ChatOpenAI(model_name=ename, openai_api_key=OPEN_API_KEY, temperature=etemp), memory=ConversationBufferMemory())
+
 
     @ui.refreshable
     async def chat_messages(self) -> None:
@@ -102,8 +115,8 @@ class ChatApp:
         self.chat_messages.refresh()
         with get_openai_callback() as cb:
             response = await self.llm.arun(text)
-        self.tokens_used = cb.total_tokens  # get the total tokens used
-        print(self.tokens_used)
+        self.tokens_used = cb.total_tokens
+        self.total_cost = cb.total_cost  # get the total tokens used
         self.messages.append(('GPT', response))
         await self.save_to_db(self.messages_to_dict(self.llm.memory.chat_memory.messages))# Update the chat history to the database
         self.chat_history_grid.refresh()
@@ -151,7 +164,7 @@ class ChatApp:
              with open(file_path, 'w') as f:
                 json.dump(data_with_timestamp, f)
         else:
-            response = await self.llm.arun("summarize the request in not more than 5 words.")
+            response = await self.llm.arun("give this request a descriptive name that is not longer than 5 words. Remember the generated name should not contain more than 5 words. You will output only the name you have chosen, no other text, no other explanation. Dont ask me for information or context. If you cannot generate the name using the provided information, just use the name unnamed chat")
             print(response)
             file_path = os.path.join(folder_path, f'{response}.json')
             with open(file_path, 'w') as f:
@@ -219,9 +232,9 @@ class ChatApp:
         retrieved_memory = ConversationBufferMemory(chat_memory=retrieved_chat_history)
         self.llm = ConversationChain(llm=ChatOpenAI(model_name="mistral-7b-instruct", openai_api_key='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', openai_api_base="https://api.perplexity.ai"), memory=retrieved_memory)
         with get_openai_callback() as cb:
-            response = await self.llm.arun("hi")
-            print(response)
+            response = await self.llm.arun("")
         self.tokens_used = cb.total_tokens
+        self.total_cost = cb.total_cost  # get the total tokens used
         self.messages = [('You', message.content) if isinstance(message, HumanMessage) else ('GPT', message.content) for message in retrieved_messages]
         self.thinking = False
         self.chat_messages.refresh()
@@ -229,9 +242,7 @@ class ChatApp:
 
 
 chat_app = ChatApp()
-
-
-chat_app = ChatApp()
+embedding = Embedding()
 
 @ui.page('/')
 async def main(client: Client):
@@ -243,9 +254,17 @@ async def main(client: Client):
     async def handle_new_chat():
         await chat_app.clear()
         chat_app.chat_history_grid.refresh()
-    
-    
-    
+
+    def handle_upload(e: events.UploadEventArguments):
+        ui.notify(e.name)
+        folder_path = "embedding_files"
+        os.makedirs(folder_path, exist_ok=True)
+        filename = e.name
+        filedata = e.content.read()
+        file_path = os.path.join(folder_path,filename)
+        with open(file_path, "wb") as f:
+            f.write(filedata)
+        
     
     await client.connected()
  
@@ -260,7 +279,7 @@ async def main(client: Client):
             ui.button(icon="add", on_click=handle_new_chat, color="slate-400").props("rounded")
         with ui.expansion("Settings"):
             ui.label("Model").classes("pt-5")
-            select = ui.select(["llama-2-70b-chat", "llama-2-13b-chat", "codellama-34b-instruct", "mistral-7b-instruct"], value="mistral-7b-instruct", on_change=lambda e: chat_app.on_value_change(ename=e.value)).classes("bg-slate-200")
+            select = ui.select(["gpt-3.5-turbo", "llama-2-70b-chat", "llama-2-13b-chat", "codellama-34b-instruct", "mistral-7b-instruct"], value="llama-2-70b-chat", on_change=lambda e: chat_app.on_value_change(ename=e.value)).classes("bg-slate-200")
             ui.label("Temperature").classes("pt-5")
             slider = ui.slider(min=0, max=2, step=0.1, value=0.1,on_change=lambda e: chat_app.on_value_change(etemp=e.value)).props("label-always")
         ui.label("Chat History").classes("pt-4 pb-2 text-xl")
@@ -268,6 +287,9 @@ async def main(client: Client):
         with ui.row().classes("w-full no-wrap justify-center pt-5"):
             ui.label("Tokens Used:")
             ui.label("").bind_text_from(chat_app,"tokens_used").classes("pb-2")
+            ui.label("Total Cost:")
+            ui.label("").bind_text_from(chat_app,"total_cost").classes("pb-2")
+        ui.upload(on_upload=handle_upload, multiple=True,).classes("w-full").props("color=black accept=.pdf")
         
 
                 
