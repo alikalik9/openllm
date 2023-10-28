@@ -13,12 +13,11 @@ from chat import ChatApp
 from embeddings import Embedding
 
 API_KEY = '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'
-OPEN_API_KEY = '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'
+OPEN_API_KEY = '^'
 PPL_BASE = 'https://api.perplexity.ai'
 
-
 chat_app = ChatApp()
-embedding = Embedding()
+#embedding = Embedding()
 
 @ui.page('/')
 async def main(client: Client):

@@ -9,17 +9,19 @@ from langchain.chains.conversation.memory import ConversationBufferMemory
 from langchain.schema import HumanMessage, AIMessage
 from langchain.memory.chat_memory import ChatMessageHistory
 from nicegui import Client, ui, events
+from embeddings import Embedding
 
 API_KEY = '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'
 OPEN_API_KEY = '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'
 PPL_BASE = 'https://api.perplexity.ai'
 
-class ChatApp:
+class ChatApp(Embedding):
     """
     Initializes the ChatApp class.The class contains all the methods to send messages to the llm, get the response and also save the chat history in a json format.
     It also contains some ui.parts, the ui.chat_message for displaying the chat conversation and an aggrid for displaying the chat history
     """
     def __init__(self):
+        super().__init__()  # Call the initializer of the parent class
         self.llm = ConversationChain(llm=ChatOpenAI(model_name="mistral-7b-instruct", openai_api_key='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', openai_api_base="https://api.perplexity.ai", temperature="0.1"), memory=ConversationBufferMemory())
         self.messages = [] # var that will contain an conversation
         self.thinking = False #var for showing the spinner 
@@ -28,6 +30,7 @@ class ChatApp:
         self.current_chat_name = "" #name for the currently selected chat. will be filled when someone clicks on a chat in the aggrid
         self.api_key = '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'
         self.openai_api_key = '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'
+        self.memory = ConversationBufferMemory()
 
     def on_value_change(self, ename="mistral-7b-instruct", etemp="0.3"):
         """
@@ -164,7 +167,7 @@ class ChatApp:
              with open(file_path, 'w') as f:
                 json.dump(data_with_timestamp, f)
         else:
-            response = await self.llm.arun("give this request a descriptive name that is not longer than 5 words. Remember the generated name should not contain more than 5 words. You will output only the name you have chosen, no other text, no other explanation. Dont ask me for information or context. If you cannot generate the name using the provided information, just use the name unnamed chat")
+            response = await self.llm.arun("give this request a descriptive name that is not longer than 5 words. Remember the generated name should not contain more than 5 words. You will output only the name you have chosen, no other text, no other explanation. Dont ask me for information or context.")
             print(response)
             file_path = os.path.join(folder_path, f'{response}.json')
             with open(file_path, 'w') as f:
