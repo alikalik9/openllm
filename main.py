@@ -10,14 +10,12 @@ from langchain.schema import HumanMessage, AIMessage
 from langchain.memory.chat_memory import ChatMessageHistory
 from nicegui import Client, ui, events
 from chat import ChatApp
-from embeddings import Embedding
 
 API_KEY = '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'
 OPEN_API_KEY = '^'
 PPL_BASE = 'https://api.perplexity.ai'
 
 chat_app = ChatApp()
-#embedding = Embedding()
 
 @ui.page('/')
 async def main(client: Client):
@@ -51,20 +49,21 @@ async def main(client: Client):
             ui.label("").bind_text_from(chat_app,"current_chat_name").classes("text-black overflow-hidden w-full")
     with ui.left_drawer(bottom_corner=True).style('background-color: #b3cde0') as drawer:
         with ui.column().classes("w-full items-center"):
+            embedding_switch = ui.switch("Chat with your Data",on_change=lambda e: chat_app.on_value_change(embedding_switch=e.value)).bind_value_from(chat_app,"embedding_switch")
             ui.button(icon="add", on_click=handle_new_chat, color="slate-400").props("rounded")
         with ui.expansion("Settings"):
             ui.label("Model").classes("pt-5")
             select = ui.select(["gpt-3.5-turbo", "llama-2-70b-chat", "llama-2-13b-chat", "codellama-34b-instruct", "mistral-7b-instruct"], value="llama-2-70b-chat", on_change=lambda e: chat_app.on_value_change(ename=e.value)).classes("bg-slate-200")
             ui.label("Temperature").classes("pt-5")
             slider = ui.slider(min=0, max=2, step=0.1, value=0.1,on_change=lambda e: chat_app.on_value_change(etemp=e.value)).props("label-always")
-        ui.label("Chat History").classes("pt-4 pb-2 text-xl")
+        ui.label("Chat History").classes("pt-4 pb-2 text-xl").bind_visibility_from(embedding_switch,"value", value=False)
         chat_app.chat_history_grid()
         with ui.row().classes("w-full no-wrap justify-center pt-5"):
             ui.label("Tokens Used:")
             ui.label("").bind_text_from(chat_app,"tokens_used").classes("pb-2")
             ui.label("Total Cost:")
             ui.label("").bind_text_from(chat_app,"total_cost").classes("pb-2")
-        ui.upload(on_upload=handle_upload, multiple=True,).classes("w-full").props("color=black accept=.pdf")
+        ui.upload(on_upload=handle_upload, multiple=True,).classes("w-full").props("color=black accept=.pdf").bind_visibility_from(embedding_switch,"value")
         
 
                 

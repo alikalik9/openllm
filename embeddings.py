@@ -1,5 +1,4 @@
 import os
-from pathlib import Path
 from llama_index import (
     GPTVectorStoreIndex,
     SimpleDirectoryReader,
@@ -16,6 +15,8 @@ from langchain.agents import Tool
 import asyncio
 from langchain.agents import initialize_agent
 from langchain.chains.conversation.memory import ConversationBufferMemory
+from llama_index.langchain_helpers.memory_wrapper import GPTIndexChatMemory
+
 
 
 
@@ -42,10 +43,13 @@ class Embedding:
         storagecontext = StorageContext.from_defaults(persist_dir=indexpath)
         self.index = load_index_from_storage(storagecontext)
         return self.index
-    def querylangchain(self,vector_dir):
-        memory = ConversationBufferMemory(memory_key="chat_history")
+    async def querylangchain(self, prompt):
+        current_directory = os.getcwd()
+        vector_dir = os.path.join(current_directory, "index_files")
         llm = ChatOpenAI(temperature=0)
         index = self.load_index(vector_dir)
+        memory = ConversationBufferMemory(memory_key="chat_history")
+
         self.tools = [
                 Tool(
                     name="LlamaIndex",
@@ -53,10 +57,10 @@ class Embedding:
                     description="useful for when you want to answer questions about the author. The input to this tool should be a complete english sentence.",
                     return_direct=True,
                 ),
-            ]        
+            ]      
         agent_executor = initialize_agent(
         self.tools, llm, agent="conversational-react-description", memory=memory)
-        response = agent_executor.run("WER ist alek")
+        response = await agent_executor.arun(prompt)
         return response
 
 
@@ -67,5 +71,5 @@ embedding_dir = os.path.join(current_directory, 'embedding_files')
 vector_dir = os.path.join(current_directory, "index_files")
 
 #index = emb.load_index(vector_dir)
-response = emb.querylangchain(vector_dir=vector_dir)
-print(response)
+#response = emb.querylangchain(vector_dir=vector_dir,prompt="wer ist alek")
+#print(response)

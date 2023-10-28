@@ -22,7 +22,9 @@ class ChatApp(Embedding):
     """
     def __init__(self):
         super().__init__()  # Call the initializer of the parent class
-        self.llm = ConversationChain(llm=ChatOpenAI(model_name="mistral-7b-instruct", openai_api_key='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', openai_api_base="https://api.perplexity.ai", temperature="0.1"), memory=ConversationBufferMemory())
+        self.memory = ConversationBufferMemory()
+        self.embedding_switch= False
+        self.llm = ConversationChain(llm=ChatOpenAI(model_name="mistral-7b-instruct", openai_api_key='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', openai_api_base="https://api.perplexity.ai", temperature="0.1"), memory=self.memory)
         self.messages = [] # var that will contain an conversation
         self.thinking = False #var for showing the spinner 
         self.tokens_used = 0 # var for counting the tokens
@@ -32,7 +34,7 @@ class ChatApp(Embedding):
         self.openai_api_key = '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'
         self.memory = ConversationBufferMemory()
 
-    def on_value_change(self, ename="mistral-7b-instruct", etemp="0.3"):
+    def on_value_change(self, ename="mistral-7b-instruct", etemp="0.3", embedding_switch=False):
         """
         Changes the value of the model and temperature for the ConversationChain.
 
@@ -48,7 +50,7 @@ class ChatApp(Embedding):
         else:
             print(ename)
             self.llm = ConversationChain(llm=ChatOpenAI(model_name=ename, openai_api_key=self.openai_api_key, temperature=etemp), memory=ConversationBufferMemory())
-
+        self.embedding_switch = embedding_switch
 
     @ui.refreshable
     async def chat_messages(self) -> None:
@@ -84,7 +86,7 @@ class ChatApp(Embedding):
         # Extract the sorted filenames
         sorted_filenames = [filename for timestamp, filename in timestamps_and_filenames]
 
-        with ui.column().classes("h-1/2 overflow-y-scroll bg-white cursor-pointer"):
+        with ui.column().classes("h-1/2 overflow-y-scroll bg-white cursor-pointer").bind_visibility_from(self,"embedding_switch", value=False):
             with ui.element('q-list').props('bordered separator').classes("overflow-y-scroll"):
                 for filename in sorted_filenames:
                     with ui.element('q-item').classes("pt-2"): #chatlist
@@ -113,18 +115,31 @@ class ChatApp(Embedding):
         text (str): The message to be sent. Text beeing given from the ui.input
         """
         self.thinking = True
+        self.chat_messages.refresh()
+        current_directory = os.getcwd()
+        embedding_dir = os.path.join(current_directory, 'embedding_files')   
+        vector_dir = os.path.join(current_directory, "index_files")
         #message = text.value
         self.messages.append(('You', text))
-        self.chat_messages.refresh()
-        with get_openai_callback() as cb:
-            response = await self.llm.arun(text)
-        self.tokens_used = cb.total_tokens
-        self.total_cost = cb.total_cost  # get the total tokens used
-        self.messages.append(('GPT', response))
-        await self.save_to_db(self.messages_to_dict(self.llm.memory.chat_memory.messages))# Update the chat history to the database
-        self.chat_history_grid.refresh()
-        self.thinking = False
-        self.chat_messages.refresh()
+        if self.embedding_switch is True:
+            with get_openai_callback() as cb:
+                response = await self.querylangchain(prompt=text)
+                self.tokens_used = cb.total_tokens
+                self.total_cost = cb.total_cost  # get the total tokens used
+                self.messages.append(('GPT', response))
+                self.thinking = False
+                self.chat_messages.refresh()
+        else:
+            with get_openai_callback() as cb:
+                response = await self.llm.arun(text)
+                self.tokens_used = cb.total_tokens
+                self.total_cost = cb.total_cost  # get the total tokens used
+                self.messages.append(('GPT', response))
+                await self.save_to_db(self.messages_to_dict(self.llm.memory.chat_memory.messages))# Update the chat history to the database
+                self.chat_history_grid.refresh()
+                self.thinking = False
+                self.chat_messages.refresh()
+            
 
     async def clear(self):
         """
@@ -134,6 +149,7 @@ class ChatApp(Embedding):
         self.messages.clear()
         self.current_chat_name=""
         self.tokens_used = "0"
+        self.embedding_switch = False
         self.chat_messages.refresh()
         
 
