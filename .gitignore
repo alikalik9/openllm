@@ -3,4 +3,5 @@ build.py
 key.txt
 embedding_files
 index_files
+index_path
 
