@@ -10,12 +10,14 @@ from langchain.schema import HumanMessage, AIMessage
 from langchain.memory.chat_memory import ChatMessageHistory
 from nicegui import Client, ui, events
 from chat import ChatApp
+from embeddings import Embedding
 
 API_KEY = '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'
 OPEN_API_KEY = '^'
 PPL_BASE = 'https://api.perplexity.ai'
 
 chat_app = ChatApp()
+embedding = Embedding()
 
 @ui.page('/')
 async def main(client: Client):
@@ -23,12 +25,25 @@ async def main(client: Client):
         message = textarea.value
         textarea.value=""
         await chat_app.send(message)
+    
+    @ui.refreshable
+    def embeddinglist():
+        current_directory = os.getcwd()
+        embedding_files = os.path.join(current_directory, 'embedding_files')   
+        embedding_filenames = [f for f in os.listdir(embedding_files)]
+        ui.label("Your Uploaded Files").bind_visibility(embedding_switch,"value")
+        with ui.column().classes("h-1/2 overflow-y-scroll bg-white cursor-pointer").bind_visibility_from(embedding_switch,"value"):
+            with ui.element('q-list').props('bordered separator').classes("overflow-y-scroll w-full"):
+                for filename in embedding_filenames:
+                    with ui.element('q-item').classes("pt-2"): #chatlist
+                        with ui.element('q-item-section'): #name of the chat
+                            ui.label(filename)
 
     async def handle_new_chat():
         await chat_app.clear()
         chat_app.chat_history_grid.refresh()
 
-    def handle_upload(e: events.UploadEventArguments):
+    async def handle_upload(e: events.UploadEventArguments):
         ui.notify(e.name)
         folder_path = "embedding_files"
         os.makedirs(folder_path, exist_ok=True)
@@ -37,16 +52,18 @@ async def main(client: Client):
         file_path = os.path.join(folder_path,filename)
         with open(file_path, "wb") as f:
             f.write(filedata)
+        await embedding.create_index()
+        embeddinglist.refresh()
         
     
     await client.connected()
  
 
-    with ui.header(fixed=True).classes('items-center p-0 px-1 h-[6vh] no-wrap gap-0').style('box-shadow: 0 2px 4px').classes('bg-slate-100'):
-        ui.button(on_click=lambda: drawer.toggle(), icon='menu').props('flat color=black')
-        ui.label('Chat to LLM 💬').on("click", lambda: ui.open("/")).classes("cursor-pointer text-black  w-1/3 text-base font-semibold md:text-[2rem]")
-        with ui.row().classes("w-full no-wrap gap-0"):
-            ui.label("").bind_text_from(chat_app,"current_chat_name").classes("text-black overflow-hidden w-full")
+    with ui.header(fixed=True).classes('items-center p-0 px-1 h-[6vh] gap-0 no-wrap').style('box-shadow: 0 2px 4px').classes('bg-slate-100'):
+        with ui.row().classes("w-full gap-0 h-full no-wrap items-center"):
+            ui.button(on_click=lambda: drawer.toggle(), icon='menu').props('flat color=black')
+            ui.label('Chat to LLM 💬').on("click", lambda: ui.open("/")).classes("cursor-pointer text-black w-2/3 text-base font-semibold md:text-[2rem]")
+        ui.label("").bind_text_from(chat_app,"current_chat_name").classes("text-black overflow-scroll text-elipsis h-full w-full")
     with ui.left_drawer(bottom_corner=True).style('background-color: #b3cde0') as drawer:
         with ui.column().classes("w-full items-center"):
             embedding_switch = ui.switch("Chat with your Data",on_change=lambda e: chat_app.on_value_change(embedding_switch=e.value)).bind_value_from(chat_app,"embedding_switch")
@@ -56,15 +73,18 @@ async def main(client: Client):
             select = ui.select(["gpt-3.5-turbo", "llama-2-70b-chat", "llama-2-13b-chat", "codellama-34b-instruct", "mistral-7b-instruct"], value="llama-2-70b-chat", on_change=lambda e: chat_app.on_value_change(ename=e.value)).classes("bg-slate-200")
             ui.label("Temperature").classes("pt-5")
             slider = ui.slider(min=0, max=2, step=0.1, value=0.1,on_change=lambda e: chat_app.on_value_change(etemp=e.value)).props("label-always")
+        with ui.column().classes("w-full no-wrap justify-center items-center pt-5"):
+            with ui.row():
+                ui.label("Tokens Used:")
+                ui.label("").bind_text_from(chat_app,"tokens_used").classes("pb-2")
+            with ui.row():
+                ui.label("Total Cost:")
+                ui.label("").bind_text_from(chat_app,"total_cost").classes("pb-2")
         ui.label("Chat History").classes("pt-4 pb-2 text-xl").bind_visibility_from(embedding_switch,"value", value=False)
         chat_app.chat_history_grid()
-        with ui.row().classes("w-full no-wrap justify-center pt-5"):
-            ui.label("Tokens Used:")
-            ui.label("").bind_text_from(chat_app,"tokens_used").classes("pb-2")
-            ui.label("Total Cost:")
-            ui.label("").bind_text_from(chat_app,"total_cost").classes("pb-2")
-        ui.upload(on_upload=handle_upload, multiple=True,).classes("w-full").props("color=black accept=.pdf").bind_visibility_from(embedding_switch,"value")
-        
+        embeddinglist()
+        ui.label("Upload more Files").classes("pt-4 bp-4").bind_visibility_from(embedding_switch,"value")
+        ui.upload(on_upload= handle_upload, multiple=True, auto_upload=True).classes("w-full").props("color=black").bind_visibility_from(embedding_switch,"value")        
 
                 
     with ui.column().classes('w-full items-stretch items-center justiy-center'):     

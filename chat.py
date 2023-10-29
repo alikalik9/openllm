@@ -121,16 +121,16 @@ class ChatApp(Embedding):
         vector_dir = os.path.join(current_directory, "index_files")
         #message = text.value
         self.messages.append(('You', text))
-        if self.embedding_switch is True:
+        if self.embedding_switch is True:  ###if we are using embedding the chat history is not saved
             with get_openai_callback() as cb:
-                response = await self.querylangchain(prompt=text)
+                response = await self.querylangchain(prompt=text)  ##using the langchain angent from the embeddings.py instead of a simple gpt call
                 self.tokens_used = cb.total_tokens
-                self.total_cost = cb.total_cost  # get the total tokens used
+                self.total_cost = round(cb.total_cost,6)  # get the total tokens used
                 self.messages.append(('GPT', response))
                 self.thinking = False
                 self.chat_messages.refresh()
         else:
-            with get_openai_callback() as cb:
+            with get_openai_callback() as cb:  ##if we are not using embedding the chat history is saved
                 response = await self.llm.arun(text)
                 self.tokens_used = cb.total_tokens
                 self.total_cost = cb.total_cost  # get the total tokens used
