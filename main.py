@@ -22,12 +22,17 @@ embedding = Embedding()
 @ui.page('/')
 async def main(client: Client):
     async def send() -> None:
+        """triggers the send functiin of the chatapp class"""
+
         message = textarea.value
         textarea.value=""
         await chat_app.send(message)
     
     @ui.refreshable
     def embeddinglist():
+        """
+       Ui for the list of files used for the embedding
+        """
         current_directory = os.getcwd()
         embedding_files = os.path.join(current_directory, 'embedding_files')   
         embedding_filenames = [f for f in os.listdir(embedding_files)]
@@ -40,11 +45,17 @@ async def main(client: Client):
                             ui.label(filename)
 
     async def handle_new_chat():
+        """Driggers the clear function of the chatapp class"""
         await chat_app.clear()
         chat_app.chat_history_grid.refresh()
 
     async def handle_upload(e: events.UploadEventArguments):
-        ui.notify(e.name)
+        """Function for creating the files in the local directory after uploading them with ui.upload
+            Also updates the embedding json index or creates it if not already created
+
+            Parameters:
+            e (events.UploadEventArguments): The upload event from nicegui
+        """
         folder_path = "embedding_files"
         os.makedirs(folder_path, exist_ok=True)
         filename = e.name
