@@ -1,13 +1,5 @@
 import json
 import os
-from datetime import datetime
-from typing import List, Dict
-from langchain.chains import ConversationChain
-from langchain.chat_models import ChatOpenAI
-from langchain.callbacks import get_openai_callback
-from langchain.chains.conversation.memory import ConversationBufferMemory
-from langchain.schema import HumanMessage, AIMessage
-from langchain.memory.chat_memory import ChatMessageHistory
 from nicegui import Client, ui, events
 from chat import ChatApp
 from embeddings import Embedding
@@ -34,7 +26,10 @@ async def main(client: Client):
        Ui for the list of files used for the embedding
         """
         current_directory = os.getcwd()
-        embedding_files = os.path.join(current_directory, 'embedding_files')   
+        embedding_files = os.path.join(current_directory, 'embedding_files')
+        if not os.path.exists(embedding_files):
+            # If the directory doesn't exist, create it
+            os.makedirs(embedding_files)
         embedding_filenames = [f for f in os.listdir(embedding_files)]
         ui.label("Your Uploaded Files").bind_visibility(embedding_switch,"value")
         with ui.column().classes("h-1/2 overflow-y-scroll bg-white cursor-pointer").bind_visibility_from(embedding_switch,"value"):

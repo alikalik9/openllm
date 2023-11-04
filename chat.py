@@ -9,7 +9,7 @@ from langchain.callbacks import get_openai_callback
 from langchain.chains.conversation.memory import ConversationBufferMemory
 from langchain.schema import HumanMessage, AIMessage
 from langchain.memory.chat_memory import ChatMessageHistory
-from nicegui import Client, ui, events
+from nicegui import ui
 from embeddings import Embedding
 
 API_KEY = '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'
@@ -70,7 +70,10 @@ class ChatApp(Embedding):
         Creates a grid for the chat history. Uses the aggrid. When clicking on a chat the load_chat_history function is invoked to load chat from json
         """
         current_directory = os.getcwd()
-        json_directory = os.path.join(current_directory, 'chat_history')   
+        json_directory = os.path.join(current_directory, 'chat_history') 
+        if not os.path.exists(json_directory):
+        # If the directory doesn't exist, create it
+            os.makedirs(json_directory)  
         json_filenames = [f for f in os.listdir(json_directory) if f.endswith('.json')] #list all json files in directory
 
         # Create a list of tuples, each containing a filename and its corresponding timestamp
