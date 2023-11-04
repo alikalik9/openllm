@@ -22,12 +22,17 @@ embedding = Embedding()
 @ui.page('/')
 async def main(client: Client):
     async def send() -> None:
+        """triggers the send functiin of the chatapp class"""
+
         message = textarea.value
         textarea.value=""
         await chat_app.send(message)
     
     @ui.refreshable
     def embeddinglist():
+        """
+       Ui for the list of files used for the embedding
+        """
         current_directory = os.getcwd()
         embedding_files = os.path.join(current_directory, 'embedding_files')   
         embedding_filenames = [f for f in os.listdir(embedding_files)]
@@ -40,11 +45,17 @@ async def main(client: Client):
                             ui.label(filename)
 
     async def handle_new_chat():
+        """Driggers the clear function of the chatapp class"""
         await chat_app.clear()
         chat_app.chat_history_grid.refresh()
 
     async def handle_upload(e: events.UploadEventArguments):
-        ui.notify(e.name)
+        """Function for creating the files in the local directory after uploading them with ui.upload
+            Also updates the embedding json index or creates it if not already created
+
+            Parameters:
+            e (events.UploadEventArguments): The upload event from nicegui
+        """
         folder_path = "embedding_files"
         os.makedirs(folder_path, exist_ok=True)
         filename = e.name
@@ -70,7 +81,7 @@ async def main(client: Client):
             ui.button(icon="add", on_click=handle_new_chat, color="slate-400").props("rounded")
         with ui.expansion("Settings"):
             ui.label("Model").classes("pt-5")
-            select = ui.select(["gpt-3.5-turbo", "llama-2-70b-chat", "llama-2-13b-chat", "codellama-34b-instruct", "mistral-7b-instruct"], value="llama-2-70b-chat", on_change=lambda e: chat_app.on_value_change(ename=e.value)).classes("bg-slate-200")
+            select = ui.select(["pplx-70b-chat-alpha", "gpt-3.5-turbo", "llama-2-70b-chat", "llama-2-13b-chat", "codellama-34b-instruct", "mistral-7b-instruct"], value="pplx-70b-chat-alpha", on_change=lambda e: chat_app.on_value_change(ename=e.value)).classes("bg-slate-200")
             ui.label("Temperature").classes("pt-5")
             slider = ui.slider(min=0, max=2, step=0.1, value=0.1,on_change=lambda e: chat_app.on_value_change(etemp=e.value)).props("label-always")
         with ui.column().classes("w-full no-wrap justify-center items-center pt-5"):
@@ -84,7 +95,7 @@ async def main(client: Client):
         chat_app.chat_history_grid()
         embeddinglist()
         ui.label("Upload more Files").classes("pt-4 bp-4").bind_visibility_from(embedding_switch,"value")
-        ui.upload(on_upload= handle_upload, multiple=True, auto_upload=True).classes("w-full").props("color=black").bind_visibility_from(embedding_switch,"value")        
+        ui.upload(on_upload= handle_upload, multiple=True, auto_upload=True).classes("w-full").props('color=black accept=".pdf,.txt"').bind_visibility_from(embedding_switch,"value")        
 
                 
     with ui.column().classes('w-full items-stretch items-center justiy-center'):     

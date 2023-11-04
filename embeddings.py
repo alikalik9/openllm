@@ -2,20 +2,16 @@ import os
 from llama_index import (
     GPTVectorStoreIndex,
     SimpleDirectoryReader,
-    download_loader,
     LLMPredictor,
     ServiceContext,
-    MockLLMPredictor,
     load_index_from_storage
     
 )
 from llama_index.storage.storage_context import StorageContext
 from langchain.chat_models import ChatOpenAI
 from langchain.agents import Tool
-import asyncio
 from langchain.agents import initialize_agent
 from langchain.chains.conversation.memory import ConversationBufferMemory
-from llama_index.langchain_helpers.memory_wrapper import GPTIndexChatMemory
 
 
 
@@ -58,8 +54,8 @@ class Embedding:
         Returns:
             The loaded index.
         """
-        storagecontext = StorageContext.from_defaults(persist_dir=self.vector_dir)
-        self.index = load_index_from_storage(storagecontext)
+        storage_context = StorageContext.from_defaults(persist_dir=self.vector_dir)
+        self.index = load_index_from_storage(storage_context)
         return self.index
     async def querylangchain(self, prompt):
         """

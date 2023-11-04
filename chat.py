@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 from datetime import datetime
 from typing import List, Dict
 from langchain.chains import ConversationChain
@@ -34,7 +35,7 @@ class ChatApp(Embedding):
         self.openai_api_key = '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'
         self.memory = ConversationBufferMemory()
 
-    def on_value_change(self, ename="mistral-7b-instruct", etemp="0.3", embedding_switch=False):
+    def on_value_change(self, ename="pplx-70b-chat-alpha", etemp="0.1", embedding_switch=False):
         """
         Changes the value of the model and temperature for the ConversationChain.
 
@@ -42,7 +43,7 @@ class ChatApp(Embedding):
         ename (str): The name of the model.
         etemp (str): The temperature for the model.
         """
-        perplexity_models = ["llama-2-70b-chat", "llama-2-13b-chat", "codellama-34b-instruct", "mistral-7b-instruct"]
+        perplexity_models = ["llama-2-70b-chat", "pplx-70b-chat-alpha", "llama-2-13b-chat", "codellama-34b-instruct", "mistral-7b-instruct"]
         openai_models = ["gpt-3.5-turbo"]
         if ename in perplexity_models:
             print(ename)
@@ -99,12 +100,14 @@ class ChatApp(Embedding):
                                     ui.button('Yes', on_click=lambda filename=filename: self.delete_chat(filename)).classes("bg-red")
                                     ui.button('No', on_click=dialog.close)
                             ui.icon('delete',color="red").on("click", dialog.open)
-                        with ui.element('q-item-section').props('side'):
-                            ui.icon("edit")
-
-       
-
-
+                        with ui.element('q-item-section').props('side'): #edit name button
+                            with ui.dialog() as edit_dialog, ui.card().classes("w-1/2"):
+                                ui.label('Enter the new name')
+                                name_input = ui.input(on_change=lambda e: self.get_chat_name(e.value)).classes("w-full")
+                                with ui.row():
+                                    ui.button('Rename', on_click=lambda filename=filename: self.rename_chat(filename)).classes("bg-black")
+                                    ui.button('Close', on_click=edit_dialog.close)
+                            ui.icon("edit").on("click", edit_dialog.open)
 
     async def send(self, text) -> None:
         """
@@ -230,6 +233,23 @@ class ChatApp(Embedding):
         file_path = os.path.join(json_directory,filename)
         os.remove(file_path)
         await self.clear()
+        self.chat_history_grid.refresh()
+    
+    def get_chat_name(self,chat_name):
+        self.chat_name = chat_name
+
+    async def rename_chat(self, old_filename):
+        print(old_filename + "old")
+        current_directory = os.getcwd()
+        json_directory = os.path.join(current_directory, 'chat_history')
+        old_file_path = os.path.join(json_directory, old_filename)
+        new_file_path = os.path.join(json_directory, self.chat_name+".json")
+        
+        if os.path.exists(old_file_path):
+            shutil.move(old_file_path, new_file_path)
+            ui.notify(f"Chat renamed from {old_filename} to {self.chat_name}.json",type="positive")
+        else:
+            ui.notify(f"No chat found with the name {old_filename}",type="negative")
         self.chat_history_grid.refresh()
 
 
