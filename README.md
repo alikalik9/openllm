@@ -20,7 +20,6 @@ https://github.com/alikalik9/openllm/assets/126254607/d7d48784-094f-4a31-9350-49
 ## Future Enhancements
 
 - **Robust Error Handling**: Improve error handling for a smoother experience.
-- **Embeddings**: Explore embedding techniques for richer context.
 - **Optimizations**: Minor improvements and optimizations.
 
 ## Technical Details
