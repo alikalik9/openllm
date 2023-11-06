@@ -46,10 +46,8 @@ class ChatApp(Embedding):
         perplexity_models = ["llama-2-70b-chat", "pplx-70b-chat-alpha", "llama-2-13b-chat", "codellama-34b-instruct", "mistral-7b-instruct"]
         openai_models = ["gpt-3.5-turbo"]
         if ename in perplexity_models:
-            print(ename)
             self.llm = ConversationChain(llm=ChatOpenAI(model_name=ename, openai_api_key=self.api_key, openai_api_base="https://api.perplexity.ai", temperature=etemp), memory=ConversationBufferMemory())
         else:
-            print(ename)
             self.llm = ConversationChain(llm=ChatOpenAI(model_name=ename, openai_api_key=self.openai_api_key, temperature=etemp), memory=ConversationBufferMemory())
         self.embedding_switch = embedding_switch
 
@@ -58,8 +56,18 @@ class ChatApp(Embedding):
         """
         Displays the chat messages in the UI. Looks for the messages in the self.messages dict
         """
+        chatcolumn = ui.column().classes("w-full")
         for name, text in self.messages:
-            ui.chat_message(text=text, name=name, sent=name == 'You').props(f"bg-color={('teal' if name == 'You' else 'primary')} text-color=white").classes("rounded-lg text-lg")
+            #ui.chat_message(text=text, name=name, sent=name == 'You').props(f"bg-color={('teal' if name == 'You' else 'primary')} text-color=white").classes("rounded-lg text-lg")
+            with chatcolumn:
+                if name == 'You':
+                    with ui.row().classes("w-full bg-slate-100 no-wrap"):
+                        ui.icon("download", size="40px")
+                        ui.markdown(text).classes("text-lg")
+                else:
+                    with ui.row().classes("no-wrap bg-slate-200"):
+                        ui.icon("person", size="40px")
+                        ui.markdown(text).classes("w-full text-lg")
         if self.thinking:
             ui.spinner("dots",size='3rem')
         await ui.run_javascript('window.scrollTo(0, document.body.scrollHeight)', respond=False)
@@ -135,6 +143,7 @@ class ChatApp(Embedding):
                 self.messages.append(('GPT', response))
                 self.thinking = False
                 self.chat_messages.refresh()
+                #print(response)
         else:
             with get_openai_callback() as cb:  ##if we are not using embedding the chat history is saved
                 response = await self.llm.arun(text)
@@ -145,6 +154,8 @@ class ChatApp(Embedding):
                 self.chat_history_grid.refresh()
                 self.thinking = False
                 self.chat_messages.refresh()
+                #print(response)
+
             
 
     async def clear(self):

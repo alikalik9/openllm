@@ -70,13 +70,15 @@ async def main(client: Client):
             ui.button(on_click=lambda: drawer.toggle(), icon='menu').props('flat color=black')
             ui.label('Chat to LLM 💬').on("click", lambda: ui.open("/")).classes("cursor-pointer text-black w-2/3 text-base font-semibold md:text-[2rem]")
         ui.label("").bind_text_from(chat_app,"current_chat_name").classes("text-black overflow-scroll text-elipsis h-full w-full")
+    
+                ###Left drawer with all the settings###
     with ui.left_drawer(bottom_corner=True).style('background-color: #b3cde0') as drawer:
         with ui.column().classes("w-full items-center"):
             embedding_switch = ui.switch("Chat with your Data",on_change=lambda e: chat_app.on_value_change(embedding_switch=e.value)).bind_value_from(chat_app,"embedding_switch")
             ui.button(icon="add", on_click=handle_new_chat, color="slate-400").props("rounded")
         with ui.expansion("Settings"):
             ui.label("Model").classes("pt-5")
-            select = ui.select(["pplx-70b-chat-alpha", "gpt-3.5-turbo", "llama-2-70b-chat", "llama-2-13b-chat", "codellama-34b-instruct", "mistral-7b-instruct"], value="pplx-70b-chat-alpha", on_change=lambda e: chat_app.on_value_change(ename=e.value)).classes("bg-slate-200")
+            select = ui.select(["pplx-70b-chat-alpha", "gpt-3.5-turbo", "gpt-4-1106-preview", "llama-2-70b-chat", "llama-2-13b-chat", "codellama-34b-instruct", "mistral-7b-instruct"], value="pplx-70b-chat-alpha", on_change=lambda e: chat_app.on_value_change(ename=e.value)).classes("bg-slate-200")
             ui.label("Temperature").classes("pt-5")
             slider = ui.slider(min=0, max=2, step=0.1, value=0.1,on_change=lambda e: chat_app.on_value_change(etemp=e.value)).props("label-always")
         with ui.column().classes("w-full no-wrap justify-center items-center pt-5"):
@@ -101,11 +103,12 @@ async def main(client: Client):
         with ui.row().classes('w-full no-wrap items-center'):
             placeholder = 'message' if API_KEY != 'not-set' else \
                 'Please provide your OPENAI key in the Python script first!'
-            textarea = ui.input(placeholder=placeholder).props('rounded outlined input-class=mx-3') \
-                .classes('w-full self-center').on('keydown.enter', send)
+            with ui.textarea(placeholder=placeholder).props('rounded outlined input-class=mx-3') \
+                .classes('w-full self-center') as textarea:
+                ui.button(color='orange-8', on_click=send, icon='send').props('flat dense').bind_visibility_from(textarea, 'value')
         ui.markdown('simple chat app built with [NiceGUI](https://nicegui.io)') \
             .classes('text-xs self-end mr-8 m-[-1em] text-primary')
 
 
 
-ui.run(title='Chat with GPT-3 (example)')
+ui.run(title='Chat with LLM', favicon="🤖")
