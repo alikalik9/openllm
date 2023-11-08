@@ -46,9 +46,9 @@ class ChatApp(Embedding):
         perplexity_models = ["llama-2-70b-chat", "pplx-70b-chat-alpha", "llama-2-13b-chat", "codellama-34b-instruct", "mistral-7b-instruct"]
         openai_models = ["gpt-3.5-turbo","gpt-4-1106-preview"]
         if ename in perplexity_models:
-            self.llm = ConversationChain(llm=ChatOpenAI(model_name=ename, openai_api_key=self.api_key, openai_api_base="https://api.perplexity.ai", temperature=etemp), memory=ConversationBufferMemory())
+            self.llm = ConversationChain(llm=ChatOpenAI(model_name=ename, openai_api_key=self.api_key, openai_api_base="https://api.perplexity.ai", temperature=etemp), memory=self.memory)
         else:
-            self.llm = ConversationChain(llm=ChatOpenAI(model_name=ename, openai_api_key=self.openai_api_key, temperature=etemp), memory=ConversationBufferMemory())
+            self.llm = ConversationChain(llm=ChatOpenAI(model_name=ename, openai_api_key=self.openai_api_key, temperature=etemp), memory=self.memory)
         self.embedding_switch = embedding_switch
 
     @ui.refreshable
