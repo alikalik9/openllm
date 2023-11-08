@@ -1,6 +1,7 @@
 import json
 import os
 import shutil
+import asyncio
 from datetime import datetime
 from typing import List, Dict
 from langchain.chains import ConversationChain
@@ -25,7 +26,7 @@ class ChatApp(Embedding):
         super().__init__()  # Call the initializer of the parent class
         self.memory = ConversationBufferMemory()
         self.embedding_switch= False
-        self.llm = ConversationChain(llm=ChatOpenAI(model_name="mistral-7b-instruct", openai_api_key='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', openai_api_base="https://api.perplexity.ai", temperature="0.1"), memory=self.memory)
+        self.llm = ConversationChain(llm=ChatOpenAI(model_name="pplx-70b-chat-alpha", openai_api_key='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', openai_api_base="https://api.perplexity.ai", temperature="0.1"), memory=self.memory)
         self.messages = [] # var that will contain an conversation
         self.thinking = False #var for showing the spinner 
         self.tokens_used = 0 # var for counting the tokens
@@ -33,7 +34,6 @@ class ChatApp(Embedding):
         self.current_chat_name = "" #name for the currently selected chat. will be filled when someone clicks on a chat in the aggrid
         self.api_key = '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'
         self.openai_api_key = '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'
-        self.memory = ConversationBufferMemory()
 
     def on_value_change(self, ename="pplx-70b-chat-alpha", etemp="0.1", embedding_switch=False):
         """
@@ -44,7 +44,7 @@ class ChatApp(Embedding):
         etemp (str): The temperature for the model.
         """
         perplexity_models = ["llama-2-70b-chat", "pplx-70b-chat-alpha", "llama-2-13b-chat", "codellama-34b-instruct", "mistral-7b-instruct"]
-        openai_models = ["gpt-3.5-turbo"]
+        openai_models = ["gpt-3.5-turbo","gpt-4-1106-preview"]
         if ename in perplexity_models:
             self.llm = ConversationChain(llm=ChatOpenAI(model_name=ename, openai_api_key=self.api_key, openai_api_base="https://api.perplexity.ai", temperature=etemp), memory=ConversationBufferMemory())
         else:
@@ -56,18 +56,26 @@ class ChatApp(Embedding):
         """
         Displays the chat messages in the UI. Looks for the messages in the self.messages dict
         """
+        async def copy_code(text):
+            escaped_text = text.replace("\\", "\\\\").replace("`", "\\`")
+            await ui.run_javascript(f'navigator.clipboard.writeText(`{escaped_text}`)', respond=False)
+            ui.notify("Text Copied!", type="positive")
+
         chatcolumn = ui.column().classes("w-full")
         for name, text in self.messages:
             #ui.chat_message(text=text, name=name, sent=name == 'You').props(f"bg-color={('teal' if name == 'You' else 'primary')} text-color=white").classes("rounded-lg text-lg")
             with chatcolumn:
                 if name == 'You':
-                    with ui.row().classes("w-full bg-slate-100 no-wrap"):
-                        ui.icon("download", size="40px")
+                    with ui.row().classes("w-full overflow-scroll bg-slate-100 no-wrap"):
+                        ui.icon("download", size="40px").on("click" , lambda text=text, copy_code=copy_code: copy_code(text))
                         ui.markdown(text).classes("text-lg")
+                        #ui.icon('content_copy', size='xl').classes('opacity-20 hover:opacity-80 cursor-pointer').on("click" , lambda text=text: copy_code(text))
                 else:
-                    with ui.row().classes("no-wrap bg-slate-200"):
+                    with ui.row().classes("w-full no-wrap overflow-scroll bg-slate-200"):
                         ui.icon("person", size="40px")
                         ui.markdown(text).classes("w-full text-lg")
+                    ui.icon('content_copy', size='xs').classes('opacity-20 hover:opacity-80 cursor-pointer pb-5').on("click" , lambda text=text: copy_code(text))
+
         if self.thinking:
             ui.spinner("dots",size='3rem')
         await ui.run_javascript('window.scrollTo(0, document.body.scrollHeight)', respond=False)
@@ -150,7 +158,7 @@ class ChatApp(Embedding):
                 self.tokens_used = cb.total_tokens
                 self.total_cost = cb.total_cost  # get the total tokens used
                 self.messages.append(('GPT', response))
-                await self.save_to_db(self.messages_to_dict(self.llm.memory.chat_memory.messages))# Update the chat history to the database
+                await self.save_to_db(self.messages_to_dict(self.memory.chat_memory.messages))
                 self.chat_history_grid.refresh()
                 self.thinking = False
                 self.chat_messages.refresh()
@@ -163,6 +171,7 @@ class ChatApp(Embedding):
         Clears the chat memory and messages to "open" a new chat
         """
         self.llm.memory.clear()
+        self.memory.clear()
         self.messages.clear()
         self.current_chat_name=""
         self.tokens_used = "0"
@@ -200,7 +209,13 @@ class ChatApp(Embedding):
              with open(file_path, 'w') as f:
                 json.dump(data_with_timestamp, f)
         else:
-            response = await self.llm.arun("give this request a descriptive name that is not longer than 5 words. Remember the generated name should not contain more than 5 words. You will output only the name you have chosen, no other text, no other explanation. Dont ask me for information or context.")
+            chat_history_text = '\n'.join(f'{"You" if m["type"] == "HumanMessage" else "GPT"}: {m["content"]}' 
+                                       for m in data)
+            prompt_text = f"{chat_history_text}\n\nSummarize the above conversation with a descriptive name not longer than 5 words. Output only the name chosen."
+            
+            llm = ConversationChain(llm=ChatOpenAI(model_name="gpt-3.5-turbo", openai_api_key=self.openai_api_key, temperature=0.1))
+            response = await llm.arun(prompt_text)
+            #response = datetime.now()
             print(response)
             file_path = os.path.join(folder_path, f'{response}.json')
             with open(file_path, 'w') as f:
@@ -265,6 +280,7 @@ class ChatApp(Embedding):
         else:
             ui.notify(f"No chat found with the name {old_filename}",type="negative")
         self.chat_history_grid.refresh()
+    
 
 
 
@@ -276,18 +292,18 @@ class ChatApp(Embedding):
         filename (str): The name of the file to be loaded.
         """
         self.thinking = True
-        self.chat_messages.refresh()
         self.current_chat_name = filename
-        self.llm.memory.clear()
-        self.messages.clear()
+        # Clear existing messages and memory before loading new history
+        self.messages = []  # Reset the messages list to be empty
+        self.memory.clear()  # Clear the chat memory
+        
+        # Load saved messages from JSON file
         retrieved_messages = self.messages_from_dict(self.load_from_db(filename))
         retrieved_chat_history = ChatMessageHistory(messages=retrieved_messages)
-        retrieved_memory = ConversationBufferMemory(chat_memory=retrieved_chat_history)
-        self.llm = ConversationChain(llm=ChatOpenAI(model_name="mistral-7b-instruct", openai_api_key='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', openai_api_base="https://api.perplexity.ai"), memory=retrieved_memory)
-        with get_openai_callback() as cb:
-            response = await self.llm.arun("")
-        self.tokens_used = cb.total_tokens
-        self.total_cost = cb.total_cost  # get the total tokens used
-        self.messages = [('You', message.content) if isinstance(message, HumanMessage) else ('GPT', message.content) for message in retrieved_messages]
+        self.memory.chat_memory = retrieved_chat_history  # Update ConversationBufferMemory with loaded history
+        
+        # Directly set self.messages to the loaded messages only
+        self.messages = [('You', m.content) if isinstance(m, HumanMessage) else ('GPT', m.content) for m in retrieved_messages]
         self.thinking = False
         self.chat_messages.refresh()
+
