@@ -1,0 +1,15 @@
+# flyctl launch added from .gitignore
+**/chat_history
+**/build.py
+**/key.txt
+**/embedding_files
+**/index_files
+**/index_path
+**/.venv
+**/var.env
+**/.cursorignore
+
+
+# flyctl launch added from .venv/.gitignore
+.venv/**/*
+fly.toml

@@ -1,7 +1,7 @@
 import json
 import os
 import shutil
-import asyncio
+from dotenv import load_dotenv
 from datetime import datetime
 from typing import List, Dict
 from langchain.chains import ConversationChain
@@ -11,13 +11,11 @@ from langchain.chains.conversation.memory import ConversationBufferMemory
 from langchain.schema import HumanMessage, AIMessage
 from langchain.memory.chat_memory import ChatMessageHistory
 from nicegui import ui
-from embeddings import Embedding
+#from embeddings import Embedding
 
-API_KEY = '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'
-OPEN_API_KEY = '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'
-PPL_BASE = 'https://api.perplexity.ai'
 
-class ChatApp(Embedding):
+load_dotenv("var.env")#load environmental variables
+class ChatApp():
     """
     Initializes the ChatApp class.The class contains all the methods to send messages to the llm, get the response and also save the chat history in a json format.
     It also contains some ui.parts, the ui.chat_message for displaying the chat conversation and an aggrid for displaying the chat history
@@ -32,8 +30,9 @@ class ChatApp(Embedding):
         self.tokens_used = 0 # var for counting the tokens
         self.total_cost = 0 #var for cost in usd
         self.current_chat_name = "" #name for the currently selected chat. will be filled when someone clicks on a chat in the aggrid
-        self.api_key = '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'
-        self.openai_api_key = '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'
+        self.perplexity_key = os.environ.get('PERPlEXITY_KEY')
+        self.openai_api_key = os.environ.get('OPEN_API_KEY')
+        
 
     def on_value_change(self, ename="pplx-70b-chat-alpha", etemp="0.1", embedding_switch=False):
         """
@@ -46,7 +45,7 @@ class ChatApp(Embedding):
         perplexity_models = ["llama-2-70b-chat", "pplx-70b-chat-alpha", "llama-2-13b-chat", "codellama-34b-instruct", "mistral-7b-instruct"]
         openai_models = ["gpt-3.5-turbo","gpt-4-1106-preview"]
         if ename in perplexity_models:
-            self.llm = ConversationChain(llm=ChatOpenAI(model_name=ename, openai_api_key=self.api_key, openai_api_base="https://api.perplexity.ai", temperature=etemp), memory=self.memory)
+            self.llm = ConversationChain(llm=ChatOpenAI(model_name=ename, openai_api_key=self.perplexity_key, openai_api_base="https://api.perplexity.ai", temperature=etemp), memory=self.memory)
         else:
             self.llm = ConversationChain(llm=ChatOpenAI(model_name=ename, openai_api_key=self.openai_api_key, temperature=etemp), memory=self.memory)
         self.embedding_switch = embedding_switch
@@ -57,8 +56,8 @@ class ChatApp(Embedding):
         Displays the chat messages in the UI. Looks for the messages in the self.messages dict
         """
         async def copy_code(text):
-            escaped_text = text.replace("\\", "\\\\").replace("`", "\\`")
-            await ui.run_javascript(f'navigator.clipboard.writeText(`{escaped_text}`)', respond=False)
+            escaped_text = text.replace("\\", "\\\\").replace("`", "\\`")#für saubere darstellung aus ui.markdown
+            ui.run_javascript(f'navigator.clipboard.writeText(`{escaped_text}`)')
             ui.notify("Text Copied!", type="positive")
 
         chatcolumn = ui.column().classes("w-full")
@@ -66,25 +65,41 @@ class ChatApp(Embedding):
             #ui.chat_message(text=text, name=name, sent=name == 'You').props(f"bg-color={('teal' if name == 'You' else 'primary')} text-color=white").classes("rounded-lg text-lg")
             with chatcolumn:
                 if name == 'You':
-                    with ui.row().classes("w-full overflow-scroll bg-slate-100 no-wrap"):
-                        ui.icon("download", size="40px").on("click" , lambda text=text, copy_code=copy_code: copy_code(text))
-                        ui.markdown(text).classes("text-lg")
+                    with ui.row().classes("overflow-scroll no-wrap bg-cyan-400 rounded-lg text-white"):
+                        ui.icon("person", size="40px").on("click" , lambda text=text, copy_code=copy_code: copy_code(text))
+                        ui.markdown(text).classes("text-base pr-3")
                         #ui.icon('content_copy', size='xl').classes('opacity-20 hover:opacity-80 cursor-pointer').on("click" , lambda text=text: copy_code(text))
                 else:
-                    with ui.row().classes("w-full no-wrap overflow-scroll bg-slate-200"):
-                        ui.icon("person", size="40px")
-                        ui.markdown(text).classes("w-full text-lg")
-                    ui.icon('content_copy', size='xs').classes('opacity-20 hover:opacity-80 cursor-pointer pb-5').on("click" , lambda text=text: copy_code(text))
+                    with ui.row().classes("w-full no-wrap overflow-scroll hover:bg-slate-100"):
+                        ui.icon("smart_toy", size="40px")
+                        ui.markdown(text).classes("w-full text-base pr-3")
+                    with ui.row().classes("w-full justify-end -mt-9"):
+                        with ui.icon('content_copy', size='xs',color="blue").classes('opacity-40 hover:opacity-80 cursor-pointer pb-5').on("click" , lambda text=text: copy_code(text)):
+                            ui.tooltip("Copy")
 
+                        ui.icon('content_copy', size='xs').classes('opacity-20 hover:opacity-80 cursor-pointer pb-5').on("click" , lambda text=text: copy_code(text))
         if self.thinking:
-            ui.spinner("dots",size='3rem')
-        await ui.run_javascript('window.scrollTo(0, document.body.scrollHeight)', respond=False)
+            ui.spinner("comment",size='3rem')
+            ui.run_javascript('window.scrollTo(0, document.body.scrollHeight)')
     
     @ui.refreshable
     def chat_history_grid(self): #function for the table with the chat history
         """
         Creates a grid for the chat history. Uses the aggrid. When clicking on a chat the load_chat_history function is invoked to load chat from json
         """
+        async def rename_chat(old_filename):
+            current_directory = os.getcwd()
+            json_directory = os.path.join(current_directory, 'chat_history')
+            old_file_path = os.path.join(json_directory, old_filename)
+            new_file_path = os.path.join(json_directory, self.chat_name+".json")
+            
+            if os.path.exists(old_file_path):
+                shutil.move(old_file_path, new_file_path)
+                ui.notify(f"Chat renamed from {old_filename} to {self.chat_name}.json",type="positive")
+            else:
+                ui.notify(f"No chat found with the name {old_filename}",type="negative")
+            self.chat_history_grid.refresh()
+
         current_directory = os.getcwd()
         json_directory = os.path.join(current_directory, 'chat_history') 
         if not os.path.exists(json_directory):
@@ -106,12 +121,13 @@ class ChatApp(Embedding):
         # Extract the sorted filenames
         sorted_filenames = [filename for timestamp, filename in timestamps_and_filenames]
 
+        #Build the list of chats based on the sorted filenames
         with ui.column().classes("h-1/2 overflow-y-scroll bg-white cursor-pointer").bind_visibility_from(self,"embedding_switch", value=False):
-            with ui.element('q-list').props('bordered separator').classes("overflow-y-scroll"):
+            with ui.element('q-list').props('bordered separator').classes("overflow-y-scroll"): #list element
                 for filename in sorted_filenames:
-                    with ui.element('q-item').classes("pt-2"): #chatlist
-                        with ui.element('q-item-section'): #name of the chat
-                            ui.label(filename).on("click", lambda filename=filename: self.load_chat_history(filename))
+                    with ui.element('q-item').classes("pt-2 hover:bg-slate-100"): #item in the list
+                        with ui.element('q-item-section').classes("overflow-hidden max-w-xs"): #name of the chat
+                            ui.label(filename).on("click", lambda filename=filename: self.load_chat_history(filename)).classes("overflow-auto w-40")
                         with ui.element('q-item-section').props('side'): #delete button and opening the dialog
                             with ui.dialog() as dialog, ui.card():
                                 ui.label('Are you sure you want to delete the chat?')
@@ -122,9 +138,9 @@ class ChatApp(Embedding):
                         with ui.element('q-item-section').props('side'): #edit name button
                             with ui.dialog() as edit_dialog, ui.card().classes("w-1/2"):
                                 ui.label('Enter the new name')
-                                name_input = ui.input(on_change=lambda e: self.get_chat_name(e.value)).classes("w-full")
+                                name_input = ui.input(on_change=lambda e: setattr(self, 'chat_name', e.value)).classes("w-full")                                
                                 with ui.row():
-                                    ui.button('Rename', on_click=lambda filename=filename: self.rename_chat(filename)).classes("bg-black")
+                                    ui.button('Rename', on_click=lambda filename=filename: rename_chat(filename)).classes("bg-black")
                                     ui.button('Close', on_click=edit_dialog.close)
                             ui.icon("edit").on("click", edit_dialog.open)
 
@@ -159,10 +175,9 @@ class ChatApp(Embedding):
                 self.total_cost = cb.total_cost  # get the total tokens used
                 self.messages.append(('GPT', response))
                 await self.save_to_db(self.messages_to_dict(self.memory.chat_memory.messages))
-                self.chat_history_grid.refresh()
+                #self.chat_history_grid.refresh()
                 self.thinking = False
                 self.chat_messages.refresh()
-                #print(response)
 
             
 
@@ -176,6 +191,7 @@ class ChatApp(Embedding):
         self.current_chat_name=""
         self.tokens_used = "0"
         self.embedding_switch = False
+        self.thinking = False
         self.chat_messages.refresh()
         
 
@@ -264,22 +280,7 @@ class ChatApp(Embedding):
         await self.clear()
         self.chat_history_grid.refresh()
     
-    def get_chat_name(self,chat_name):
-        self.chat_name = chat_name
-
-    async def rename_chat(self, old_filename):
-        print(old_filename + "old")
-        current_directory = os.getcwd()
-        json_directory = os.path.join(current_directory, 'chat_history')
-        old_file_path = os.path.join(json_directory, old_filename)
-        new_file_path = os.path.join(json_directory, self.chat_name+".json")
-        
-        if os.path.exists(old_file_path):
-            shutil.move(old_file_path, new_file_path)
-            ui.notify(f"Chat renamed from {old_filename} to {self.chat_name}.json",type="positive")
-        else:
-            ui.notify(f"No chat found with the name {old_filename}",type="negative")
-        self.chat_history_grid.refresh()
+    
     
 
 
