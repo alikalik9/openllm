@@ -1,4 +1,4 @@
-# fly.toml app configuration file generated for openllm on 2023-11-25T13:38:44+01:00
+# fly.toml app configuration file generated for openllm on 2023-11-25T19:42:56+01:00
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
@@ -7,6 +7,17 @@ app = "openllm"
 primary_region = "ams"
 
 [build]
+
+[env]
+  DESCOPE_KEY = "K2YfcwBwHGi3GrunVNimmUNz5lv3FgG5umhG2yRaRGOyiV7pd1V92WLrUJ7QG0Z9xuNIJXA"
+  DESCOPE_PROJECT_ID = "P2YfcYqNKEvMOM3pzQhFfhrLmO1w"
+  OPEN_API_KEY = "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"
+  PERPlEXITY_KEY = "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"
+
+[[mounts]]
+  source = "chathistory"
+  destination = "/app/*"
+  auto_extend_size_threshold = 0
 
 [http_service]
   internal_port = 8080
@@ -20,7 +31,3 @@ primary_region = "ams"
   cpu_kind = "shared"
   cpus = 1
   memory_mb = 1024
-
-[[mounts]]
-  source = "chathistory"
-  destination = "/"

@@ -10,7 +10,7 @@ import user
 #embedding = Embedding()
 
 
-@user.page('/')
+@ui.page('/')
 async def main(client: Client):
     load_dotenv("var.env")#load environmental variables
     chat_app = ChatApp()
@@ -111,8 +111,5 @@ async def main(client: Client):
         ui.markdown('simple chat app built with [NiceGUI](https://nicegui.io)') \
             .classes('text-xs self-end mr-8 m-[-1em] text-primary')
 
-@user.login_page
-def login():
-    ui.label("hi")
-    user.login_form().on('success', lambda: ui.open('/'))
-ui.run(title='Chat with LLM', favicon="🤖", reload='FLY_ALLOC_ID' not in os.environ, storage_secret = "secret")
+
+ui.run(title='Chat with LLM', favicon="🤖", reconnect_timeout = 200, storage_secret = "secret")
