@@ -11,11 +11,11 @@ from langchain.chains.conversation.memory import ConversationBufferMemory
 from langchain.schema import HumanMessage, AIMessage
 from langchain.memory.chat_memory import ChatMessageHistory
 from nicegui import ui, app
-#from embeddings import Embedding
+from embeddings import Embedding
 
 
 load_dotenv("var.env")#load environmental variables
-class ChatApp():
+class ChatApp(Embedding):
     """
     Initializes the ChatApp class.The class contains all the methods to send messages to the llm, get the response and also save the chat history in a json format.
     It also contains some ui.parts, the ui.chat_message for displaying the chat conversation and an aggrid for displaying the chat history

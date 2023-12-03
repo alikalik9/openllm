@@ -12,7 +12,7 @@ from authmiddleware import AuthMiddleware
 import login_page
 
 
-#embedding = Embedding()
+embedding = Embedding()
 
 # Eine Liste von Routen, die nicht authentifiziert werden müssen.
 

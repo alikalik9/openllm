@@ -7,7 +7,10 @@ OpenLLM is a versatile project that allows users to interact with different lang
 - **Intuitive Chat Interface**: Users can seamlessly chat with various LLMs.
 - **Chat History**: Basic chat history is stored locally in JSON files.
 - **Token Counter**: Keep track of tokens used during interactions.
-- **Embeddings**: Chat to your files.
+- **Simple embeddings with llama-index**: Chat to your files.
+- **Simple authentification**: Set a password as an env variable and only users that enter the password correctly can access the site. Authentification is stored in a user-coockie, so you dont have to enter the password one.
+
+
 
 
 ## Demo
@@ -34,5 +37,5 @@ OpenLLM relies on two Python libraries:
 
 1. Clone the repository.
 2. Install dependencies from `requirements.txt`.
-3. Store API keys for OpenAI and Perplexity.
+3. Set the env variables listed in the env_vars_github.txt.
 4. Run `main.py`.
