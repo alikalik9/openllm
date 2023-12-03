@@ -16,9 +16,6 @@ from dotenv import load_dotenv
 
 
 
-
-load_dotenv("var.env")#load environmental variables
-
 class Embedding:
     """
     This class is used to create and load embeddings, and to query them using langchain.
@@ -27,11 +24,16 @@ class Embedding:
         """
         Initializes the Embedding class with the necessary directories and services.
         """
+        load_dotenv("var.env")#load environmental variables
+        open_api_key = os.getenv("OPEN_API_KEY")
+        os.environ[
+            "OPENAI_API_KEY"
+        ] = open_api_key
         current_directory = os.getcwd()
         self.embedding_file_dir = os.path.join(current_directory, 'embedding_files')   
         self.vector_dir = os.path.join(current_directory, "index_files")
         self.llm_predictor = LLMPredictor(
-            llm=ChatOpenAI(temperature=0, model_name="gpt-3.5-turbo", request_timeout=120, openai_api_key=os.environ.get('OPEN_API_KEY'))
+            llm=ChatOpenAI(temperature=0, model_name="gpt-3.5-turbo", request_timeout=120)
         )
         self.service_context = ServiceContext.from_defaults(
             llm_predictor=self.llm_predictor

@@ -29,7 +29,7 @@ class ChatApp(Embedding):
             self.openai_models = eval(file2.read())
             
 
-        self.llm = ConversationChain(llm=ChatOpenAI(model_name=app.storage.user.get('last_model', self.perplexity_models[0]), openai_api_key='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', openai_api_base="https://api.perplexity.ai", temperature="0.1"), memory=self.memory)
+        self.llm = ConversationChain(llm=ChatOpenAI(model_name=app.storage.user.get('last_model', self.perplexity_models[0]), openai_api_key=os.getenv("PERPlEXITY_KEY"), openai_api_base="https://api.perplexity.ai", temperature="0.1"), memory=self.memory)
         self.messages = [] # var that will contain an conversation
         self.thinking = False #var for showing the spinner 
         self.tokens_used = 0 # var for counting the tokens
