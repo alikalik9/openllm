@@ -7,6 +7,7 @@ OpenLLM is a versatile project that allows users to interact with different lang
 - **Intuitive Chat Interface**: Users can seamlessly chat with various LLMs.
 - **Chat History**: Basic chat history is stored locally in JSON files.
 - **Token Counter**: Keep track of tokens used during interactions.
+- **Online LLMs!**: Using the newest perplexity online-models that are grounded on internet data. So no cutoff-date! Very new models so definetly expect errors.
 - **Basic embeddings with llama-index**: Upload your files and chat to them.
 - **Basic authentification**: Set a password as an env variable and only users that enter that password correctly can access the site. Authentification is stored in a user-coockie, so you dont  to enter the password only once->Very basic, no password encoding implemented.
 
@@ -15,8 +16,14 @@ OpenLLM is a versatile project that allows users to interact with different lang
 
 ## Demo
 
+https://github.com/alikalik9/openllm/assets/126254607/82e26710-0dc1-4e6c-8530-2b8f2028954a
 
-https://github.com/alikalik9/openllm/assets/126254607/d7d48784-094f-4a31-9350-49e0440f9e31
+Online-LLM
+
+
+https://github.com/alikalik9/openllm/assets/126254607/2244c9b9-c6cc-4362-be81-a7bf1f23fa75
+
+
 
 
 
