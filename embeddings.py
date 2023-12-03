@@ -12,10 +12,12 @@ from langchain.chat_models import ChatOpenAI
 from langchain.agents import Tool
 from langchain.agents import initialize_agent
 from langchain.chains.conversation.memory import ConversationBufferMemory
+from dotenv import load_dotenv
 
 
 
 
+load_dotenv("var.env")#load environmental variables
 
 class Embedding:
     """
@@ -25,14 +27,11 @@ class Embedding:
         """
         Initializes the Embedding class with the necessary directories and services.
         """
-        os.environ[
-            "OPENAI_API_KEY"
-        ] = "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"
         current_directory = os.getcwd()
         self.embedding_file_dir = os.path.join(current_directory, 'embedding_files')   
         self.vector_dir = os.path.join(current_directory, "index_files")
         self.llm_predictor = LLMPredictor(
-            llm=ChatOpenAI(temperature=0, model_name="gpt-3.5-turbo", request_timeout=120)
+            llm=ChatOpenAI(temperature=0, model_name="gpt-3.5-turbo", request_timeout=120, openai_api_key=os.environ.get('OPEN_API_KEY'))
         )
         self.service_context = ServiceContext.from_defaults(
             llm_predictor=self.llm_predictor
