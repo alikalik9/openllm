@@ -16,4 +16,5 @@ test.py
 fly.toml
 dockerfile
 .nicegui
-
+__pycache__
+.DS_Store

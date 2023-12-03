@@ -10,7 +10,7 @@ from langchain.callbacks import get_openai_callback
 from langchain.chains.conversation.memory import ConversationBufferMemory
 from langchain.schema import HumanMessage, AIMessage
 from langchain.memory.chat_memory import ChatMessageHistory
-from nicegui import ui
+from nicegui import ui, app
 #from embeddings import Embedding
 
 
@@ -24,7 +24,12 @@ class ChatApp():
         super().__init__()  # Call the initializer of the parent class
         self.memory = ConversationBufferMemory()
         self.embedding_switch= False
-        self.llm = ConversationChain(llm=ChatOpenAI(model_name="pplx-70b-chat-alpha", openai_api_key='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', openai_api_base="https://api.perplexity.ai", temperature="0.1"), memory=self.memory)
+        with open('perplexity_model_list.txt', 'r') as file1, open('openai_model_list.txt', 'r') as file2:
+            self.perplexity_models = eval(file1.read())
+            self.openai_models = eval(file2.read())
+            
+
+        self.llm = ConversationChain(llm=ChatOpenAI(model_name=app.storage.user.get('last_model', self.perplexity_models[0]), openai_api_key='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', openai_api_base="https://api.perplexity.ai", temperature="0.1"), memory=self.memory)
         self.messages = [] # var that will contain an conversation
         self.thinking = False #var for showing the spinner 
         self.tokens_used = 0 # var for counting the tokens
@@ -32,9 +37,16 @@ class ChatApp():
         self.current_chat_name = "" #name for the currently selected chat. will be filled when someone clicks on a chat in the aggrid
         self.perplexity_key = os.environ.get('PERPlEXITY_KEY')
         self.openai_api_key = os.environ.get('OPEN_API_KEY')
+        if os.getenv('FLY_ENV') == 'production':
+            self.json_directory = os.path.join('/app/data/', 'chat_history')
+            print(self.json_directory)
+        else:
+            self.json_directory = os.path.join(os.getcwd(), 'chat_history')
+            print(self.json_directory)
+
         
 
-    def on_value_change(self, ename="pplx-70b-chat-alpha", etemp="0.1", embedding_switch=False):
+    def on_value_change(self, ename="pplx-70b-chat", etemp="0.1", embedding_switch=False):
         """
         Changes the value of the model and temperature for the ConversationChain.
 
@@ -42,12 +54,17 @@ class ChatApp():
         ename (str): The name of the model.
         etemp (str): The temperature for the model.
         """
-        perplexity_models = ["llama-2-70b-chat", "pplx-70b-chat-alpha", "llama-2-13b-chat", "codellama-34b-instruct", "mistral-7b-instruct"]
-        openai_models = ["gpt-3.5-turbo","gpt-4-1106-preview"]
+        #Open texts withe the models
+        with open('perplexity_model_list.txt', 'r') as file1, open('openai_model_list.txt', 'r') as file2:
+            perplexity_models = eval(file1.read())
+            openai_models = eval(file2.read())
+        #if selected model is part of the perplexity models use perplexity openapibase
         if ename in perplexity_models:
             self.llm = ConversationChain(llm=ChatOpenAI(model_name=ename, openai_api_key=self.perplexity_key, openai_api_base="https://api.perplexity.ai", temperature=etemp), memory=self.memory)
         else:
+            #if selected model is part of the openai models
             self.llm = ConversationChain(llm=ChatOpenAI(model_name=ename, openai_api_key=self.openai_api_key, temperature=etemp), memory=self.memory)
+        app.storage.user['last_model'] = ename
         self.embedding_switch = embedding_switch
 
     @ui.refreshable
@@ -88,10 +105,8 @@ class ChatApp():
         Creates a grid for the chat history. Uses the aggrid. When clicking on a chat the load_chat_history function is invoked to load chat from json
         """
         async def rename_chat(old_filename):
-            current_directory = os.getcwd()
-            json_directory = os.path.join(current_directory, 'chat_history')
-            old_file_path = os.path.join(json_directory, old_filename)
-            new_file_path = os.path.join(json_directory, self.chat_name+".json")
+            old_file_path = os.path.join(self.json_directory, old_filename)
+            new_file_path = os.path.join(self.json_directory, self.chat_name + ".json")
             
             if os.path.exists(old_file_path):
                 shutil.move(old_file_path, new_file_path)
@@ -100,17 +115,15 @@ class ChatApp():
                 ui.notify(f"No chat found with the name {old_filename}",type="negative")
             self.chat_history_grid.refresh()
 
-        current_directory = os.getcwd()
-        json_directory = os.path.join(current_directory, 'chat_history') 
-        if not os.path.exists(json_directory):
+        if not os.path.exists(self.json_directory):
         # If the directory doesn't exist, create it
-            os.makedirs(json_directory)  
-        json_filenames = [f for f in os.listdir(json_directory) if f.endswith('.json')] #list all json files in directory
+            os.makedirs(self.json_directory)  
+        json_filenames = [f for f in os.listdir(self.json_directory) if f.endswith('.json')] #list all json files in directory
 
         # Create a list of tuples, each containing a filename and its corresponding timestamp
         timestamps_and_filenames = []
         for filename in json_filenames:
-            with open(os.path.join(json_directory, filename), 'r') as f:
+            with open(os.path.join(self.json_directory, filename), 'r') as f:
                 data = json.load(f)
                 timestamp = data['timestamp']
                 timestamps_and_filenames.append((timestamp, filename))
@@ -154,9 +167,8 @@ class ChatApp():
         """
         self.thinking = True
         self.chat_messages.refresh()
-        current_directory = os.getcwd()
-        embedding_dir = os.path.join(current_directory, 'embedding_files')   
-        vector_dir = os.path.join(current_directory, "index_files")
+        embedding_dir = os.path.join(os.getcwd(), 'embedding_files')   
+        vector_dir = os.path.join(os.getcwd(), "index_files")
         #message = text.value
         self.messages.append(('You', text))
         if self.embedding_switch is True:  ###if we are using embedding the chat history is not saved
@@ -216,12 +228,11 @@ class ChatApp():
         Parameters:
         data (List[Dict]): The chat history to be saved.
         """
-        folder_path = "chat_history"
-        os.makedirs(folder_path, exist_ok=True)
+        os.makedirs(self.json_directory, exist_ok=True)
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        data_with_timestamp = {"timestamp": timestamp, "messages": data}
+        data_with_timestamp = {"timestamp": timestamp, "messages": data, "tokens_used": self.tokens_used}
         if self.current_chat_name:
-             file_path = os.path.join(folder_path, f'{self.current_chat_name}')
+             file_path = os.path.join(self.json_directory, f'{self.current_chat_name}')
              with open(file_path, 'w') as f:
                 json.dump(data_with_timestamp, f)
         else:
@@ -233,57 +244,51 @@ class ChatApp():
             response = await llm.arun(prompt_text)
             #response = datetime.now()
             print(response)
-            file_path = os.path.join(folder_path, f'{response}.json')
+            file_path = os.path.join(self.json_directory, f'{response}.json')
             with open(file_path, 'w') as f:
                 json.dump(data_with_timestamp, f)
             self.current_chat_name = f'{response}.json'
 
-    def load_from_db(self, filename: str) -> List[Dict]:
+    def load_and_convert_messages(self, filename: str) -> List:
         """
-        Loads the chat history from the database. Helper function to get the content of the json
+        Loads the chat history from the database and converts it to the appropriate message objects.
 
         Parameters:
         filename (str): The name of the file to be loaded.
 
         Returns:
-        List[Dict]: The loaded chat history.
+        List: The list of message objects.
         """
-        folder_path = "chat_history"
-        file_path = os.path.join(folder_path, f'{filename}')
+        file_path = os.path.join(self.json_directory, f'{filename}')
         with open(file_path, 'r') as f:
-            data_with_timestamp=json.load(f)
-        return data_with_timestamp["messages"]
+            data_with_timestamp = json.load(f)
+            self.tokens_used = data_with_timestamp["tokens_used"]
+            messages_data = data_with_timestamp["messages"]
 
-    def messages_from_dict(self, data: List[Dict]) -> List:
-        """
-        Converts the dictionary representation of messages to the actual messages.
-
-        Parameters:
-        data (List[Dict]): The dictionary representation of the messages.
-
-        Returns:
-        List: The actual messages.
-        """
+        # Convert the dictionary representation of messages to actual message objects
         messages = []
-        for m in data:
+        for m in messages_data:
             if m['type'] == 'HumanMessage':
                 messages.append(HumanMessage(content=m['content']))
             elif m['type'] == 'AIMessage':
                 messages.append(AIMessage(content=m['content']))
         return messages
 
+    
     async def delete_chat(self,filename):
-        current_directory = os.getcwd()
-        json_directory = os.path.join(current_directory, 'chat_history')
-        file_path = os.path.join(json_directory,filename)
+        """
+        Deletes a chat.
+
+        Parameters:
+            filename (str): The name of the file to be deleted.
+
+        Returns:
+            None
+        """
+        file_path = os.path.join(self.json_directory,filename)
         os.remove(file_path)
         await self.clear()
         self.chat_history_grid.refresh()
-    
-    
-    
-
-
 
     async def load_chat_history(self, filename: str) -> None:
         """
@@ -299,10 +304,10 @@ class ChatApp():
         self.memory.clear()  # Clear the chat memory
         
         # Load saved messages from JSON file
-        retrieved_messages = self.messages_from_dict(self.load_from_db(filename))
+        retrieved_messages = self.load_and_convert_messages(filename)
         retrieved_chat_history = ChatMessageHistory(messages=retrieved_messages)
         self.memory.chat_memory = retrieved_chat_history  # Update ConversationBufferMemory with loaded history
-        
+
         # Directly set self.messages to the loaded messages only
         self.messages = [('You', m.content) if isinstance(m, HumanMessage) else ('GPT', m.content) for m in retrieved_messages]
         self.thinking = False

@@ -1,10 +1,14 @@
 from nicegui import ui, app
-#import user
+import os
 from typing import Optional
 from fastapi.responses import RedirectResponse
+from dotenv import load_dotenv
+
 
 # Ein einfacher Benutzername-Passwort-Speicher. In einer echten Anwendung würden Passwörter gehasht und nicht im Klartext gespeichert.
-predefined_password = 'test'
+load_dotenv("var.env")#load environmental variables
+predefined_password = os.environ.get('PASSWORD')
+
 
 @ui.page('/login')
 # Definition der Anmeldeseite

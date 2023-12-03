@@ -16,11 +16,14 @@ import login_page
 
 # Eine Liste von Routen, die nicht authentifiziert werden müssen.
 
+load_dotenv("var.env")#load environmental variables
+
+with open('perplexity_model_list.txt', 'r') as file1, open('openai_model_list.txt', 'r') as file2:
+    models = eval(file1.read()) + eval(file2.read())
 
 
 @ui.page('/')
 async def main(client: Client):
-    load_dotenv("var.env")#load environmental variables
     chat_app = ChatApp()
     async def send() -> None:
         """triggers the send functiin of the chatapp class"""
@@ -80,7 +83,7 @@ async def main(client: Client):
             ui.button(on_click=lambda: drawer.toggle(), icon='menu').props('flat color=black')
             ui.label('Chat to LLM 💬').on("click", lambda: ui.open("/")).classes("cursor-pointer text-black w-2/3 text-base font-semibold md:text-[2rem]")
         ui.label("").bind_text_from(chat_app,"current_chat_name").classes("text-black overflow-scroll text-elipsis h-full w-full")
-    
+        ui.button(on_click=lambda: (app.storage.user.clear(), ui.open('/login')), icon='logout').props('outline round')
                 ###Left drawer with all the settings###
     with ui.left_drawer(bottom_corner=True).classes("bg-neutral-100") as drawer:
         with ui.column().classes("w-full items-center"):
@@ -88,7 +91,7 @@ async def main(client: Client):
             ui.button(icon="add", on_click=handle_new_chat, color="slate-400").props("rounded")
         with ui.expansion("Settings").classes("w-full"):
             ui.label("Model").classes("pt-5")
-            select = ui.select(["pplx-70b-chat-alpha", "gpt-3.5-turbo", "gpt-4-1106-preview", "llama-2-70b-chat", "llama-2-13b-chat", "codellama-34b-instruct", "mistral-7b-instruct"], value="pplx-70b-chat-alpha", on_change=lambda e: chat_app.on_value_change(ename=e.value)).classes("bg-slate-200 w-full")
+            models_select = ui.select(models, value=app.storage.user.get('last_model', models[0]), on_change=lambda e: chat_app.on_value_change(ename=e.value)).classes("bg-slate-200 w-full")
             ui.label("Temperature").classes("pt-5")
             slider = ui.slider(min=0, max=2, step=0.1, value=0.1,on_change=lambda e: chat_app.on_value_change(etemp=e.value)).props("label-always")
         with ui.column().classes("w-full no-wrap justify-center items-center pt-5"):
@@ -122,4 +125,4 @@ async def main(client: Client):
 login_page
 # Hinzufügen der AuthMiddleware zur Anwendung
 app.add_middleware(AuthMiddleware)
-ui.run(title='Chat with LLM', favicon="🤖", reconnect_timeout = 200, storage_secret = "secret")
+ui.run(title='Chat with LLM', favicon="🤖", reconnect_timeout = 200, storage_secret = os.getenv("STORAGE_SECRET"))
