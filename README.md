@@ -1,4 +1,4 @@
-# OpenLLM: Chat with Various LLM Models
+# OpenLLM: Chat with various LLM Models
 
 OpenLLM is a versatile project that allows users to interact with different language models (LLMs). It leverages the [Perplexity API](https://blog.perplexity.ai/blog/introducing-pplx-api) for access to well-known open-source models like the LLAMA models or Mistral 7B. Additionally, OpenAI's API is used to communicate with GPT models. There is also simple functinality for file embeddings.
 
